@@ -7,8 +7,9 @@ import (
 )
 // Main struct
 type Auction struct {
-	lot []Lot
-	bidder []User
+	lots []Lot
+	bidders []User
+	seller std.Address
 	titeAuciton string
 	description string
 	deadline time.Time 
@@ -30,10 +31,13 @@ func NewAuction(title string, description string, deadline time.Time, minPrice i
 		description: description,
 		deadline: deadline,
 		minPrice: minPrice,
+		seller: seller
+		bidders: make([]User, 0),
+		lots: make([]Lot, 0),
 	}
 }
 func (a *Auction) AddLot(title string, description string, item grc721.basicNFT) {
-	a.lot = append(a.lot, Lot{
+	a.lots = append(a.lots, Lot{
 		title: title,
 		description: description,
 		item: item,
@@ -41,9 +45,9 @@ func (a *Auction) AddLot(title string, description string, item grc721.basicNFT)
 }
 func (a *Auction) Bid(bidder std.Address, amount int64) {
 	if amount < a.minPrice {
-		return
+		panic("Bid amount is less than the minimum price")
 	}
-	a.bidder = append(a.bidder, User{
+	a.bidders = append(a.bidders, User{
 		bidder: bidder,
 		amount: amount,
 	})
