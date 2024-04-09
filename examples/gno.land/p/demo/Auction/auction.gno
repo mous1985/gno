@@ -1,67 +1,35 @@
 package auction 
 import (
     "std"
-	"time"
-	"gno.land/p/demo/grc/grc721"
-    "gno.land/p/demo/avl"
-)
+	)
 // Main struct
 type Auction struct {
-	lots []Lot
-	bidders []User
-	seller std.Address
-	titeAuciton string
-	description string
-	deadline time.Time 
-	minPrice int64 
+	titleAuction string
+	owner std.Address
+	description string 
 }
-type User struct {
-	bidder std.Address
-	amount int64
-}
-type Lot struct {
-	title string
-	description strings
-	item grc721.basicNFT
-}
-// Auction instance constructor
-func NewAuction(title string, description string, deadline time.Time, minPrice int64) *Auction {
+
+func NewAuction(
+	titleAuction string, 
+	owner std.Address,
+	description string, 
+	) *Auction {
 	return &Auction{
-		titleAuction: title,
+		titleAuction: titleAuction,
 		description: description,
-		deadline: deadline,
-		minPrice: minPrice,
-		seller: seller
-		bidders: make([]User, 0),
-		lots: make([]Lot, 0),
+		owner: owner,
 	}
 }
-func (a *Auction) AddLot(title string, description string, item grc721.basicNFT) {
-	a.lots = append(a.lots, Lot{
-		title: title,
-		description: description,
-		item: item,
-	})
+
+
+func (A Auction) GetTitle() string {
+	return A.titleAuction
 }
-func (a *Auction) Bid(bidder std.Address, amount int64) {
-	if amount < a.minPrice {
-		panic("Bid amount is less than the minimum price")
-	}
-	a.bidders = append(a.bidders, User{
-		bidder: bidder,
-		amount: amount,
-	})
+func (A Auction) GetDescription() string {
+	return A.description
 }
-// func (a *Auction) Close() {
-// 	if time.Now().After(a.deadline) {
-// 		// Sort bidders by amount
-// 		avl.Sort(a.bidder, func(i, j int) bool {
-// 			return a.bidder[i].amount > a.bidder[j].amount
-// 		})
-// 		// Transfer item to the highest bidder
-// 		if len(a.bidder) > 0 {
-// 			// Transfer item to the highest bidder
-// 			a.lot[0].item.Transfer(a.bidder[0].bidder)
-// 		}
-// 	}
-// }
+
+func (A Auction) isOwner(address std.Address) bool {
+	return address.String() == A.owner.String()
+}
+
