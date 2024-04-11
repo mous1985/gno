@@ -7,18 +7,18 @@ in a first step, i'm developing the functions needed to carry out the transactio
 
 ### Seller
 
-- 1. Must have a wallet .
-- 2. initiate the auction process by listing the item for sale .
-- 3. He has the option of accepting or declining the buyer's offer before the end of the countdown.
-- 4. He define the starting price.
-- 5. He define reserve price (if any)
-- 6. He define auction duration(countdow).
+- Must have a wallet .
+- Initiate the auction process by listing the item for sale .
+- He has the option of accepting or declining the buyer's offer before the end of the countdown.
+- He define the starting price.
+- He define reserve price (if any)
+- He define auction duration(countdow).
 
 ### Bidder
 
-- 1. Must have anough of token on his wallet .
-- 2. Should be able to view the *NFT* available to auction .
-- 3. Must deposit an amount equal to the 10% value of the nft in a smart contract as collateral .
+- Must have anough of token on his wallet .
+- Should be able to view the *NFT* available to auction .
+- Must deposit an amount equal to the 10% value of the nft in a smart contract as collateral .
 
 ### Countdown
 
