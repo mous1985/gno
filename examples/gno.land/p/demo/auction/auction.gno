@@ -72,8 +72,13 @@ func (A Auction) GetMinPrice() uint64 {
 	return A.price
 }
 
-func (A Auction) GetBids() *avl.Tree {
-	return A.bids
+func (A Auction) GetBids() []*Bid {
+	bids := make([]*Bid, 0, A.bids.Size())
+	A.bids.Iterate("", "", func(key string, value interface{}) bool {
+		bids = append(bids, value.(*Bid))
+		return false
+	})
+	return bids
 }
 
 func (A Auction) isOwner() bool {
@@ -105,4 +110,19 @@ func (U User) GetName() string {
 
 func (U User) GetAddress() std.Address {
 	return U.address
+}
+
+func NewBid(bidder *User, amount uint64) *Bid {
+	return &Bid{
+		bidder: bidder,
+		amount: amount,
+	}
+}
+
+func (B Bid) GetBidder() *User {
+	return B.bidder
+}
+
+func (B Bid) GetAmount() uint64 {
+	return B.amount
 }
