@@ -82,7 +82,7 @@ func (A Auction) GetBids() []*Bid {
 	return bids
 }
 
-func (A Auction) isOwner() bool {
+func (A Auction) IsOwner() bool {
 	return std.GetOrigCaller() == A.owner.address
 }
 

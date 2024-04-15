@@ -19,7 +19,7 @@ func init() {
 	auctionTree = avl.NewTree()
 }
 
-func newAuction(title string, description string, begin time.Time, deadline time.Time, minPrice) string {
+func NewAuction(title string, description string, begin time.Time, deadline time.Time, minPrice) string {
 	txSender := std.GetOrigCaller()
 	if begin <= time.Now().Unix() {
 		panic("deadline has to be in the future")
@@ -35,7 +35,7 @@ func newAuction(title string, description string, begin time.Time, deadline time
 		panic("minPrice has to be positive")
 	}
 	id:=strconv.Itoa(auctionTree.Size())
-	auc := auction.newAuction(title, txSender, description, begin, deadline, minPrice)
+	auc := auction.NewAuction(title, txSender, description, begin, deadline, minPrice)
 	auctionID.Next()
 	auctionTree.Set(id, auc)
 	return "auction created "
