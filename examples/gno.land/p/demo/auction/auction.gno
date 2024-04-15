@@ -19,6 +19,7 @@ type Auction struct {
 	bids        *avl.Tree // key: std.Address, value: Bid
 }
 
+// can be a owner of auction or a bidder
 type User struct {
 	name    string
 	address std.Address
