@@ -69,7 +69,7 @@ func (A Auction) GetDeadline() time.Time {
 	return A.deadline
 }
 
-func (A Auction) GetMinPrice() uint64 {
+func (A Auction) GetPrice() uint64 {
 	return A.price
 }
 
