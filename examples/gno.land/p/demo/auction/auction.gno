@@ -86,12 +86,16 @@ func (A Auction) IsOwner() bool {
 	return std.GetOrigCaller() == A.owner.address
 }
 
-func (A *Auction) AddBid(bidder *User, amount uint64) {
-	key := A.bids.Size()
-	bid := &Bid{
+func NewBid(bidder *User, amount uint64) *Bid {
+	return &Bid{
 		bidder: bidder,
 		amount: amount,
 	}
+}
+
+func (A *Auction) AddBid(bidder *User, amount uint64) {
+	key := A.bids.Size()
+	bid := NewBid(bidder, amount)
 	A.bids.Set(strconv.Itoa(key), bid)
 	A.price = amount
 }
@@ -111,13 +115,6 @@ func (U User) GetName() string {
 
 func (U User) GetAddress() std.Address {
 	return U.address
-}
-
-func NewBid(bidder *User, amount uint64) *Bid {
-	return &Bid{
-		bidder: bidder,
-		amount: amount,
-	}
 }
 
 func (B Bid) GetBidder() *User {

@@ -1,0 +1,55 @@
+<mxfile host="65bd71144e">
+    <diagram id="QLp7b73ZQBYeHIeEDoCH" name="Page-1">
+        <mxGraphModel dx="840" dy="786" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="135" value="check Balance" style="rhombus;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="1" vertex="1">
+                    <mxGeometry x="1520" y="880" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="136" value="check&amp;nbsp; NFT" style="rhombus;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="1" vertex="1">
+                    <mxGeometry x="1630" y="750" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="137" value="bid &amp;gt; minPriec" style="rhombus;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="1" vertex="1">
+                    <mxGeometry x="1660" y="1040" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="140" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="138" target="139" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="138" value="Auction begin&amp;nbsp;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#008a00;fontColor=#ffffff;strokeColor=#005700;" parent="1" vertex="1">
+                    <mxGeometry x="1150" y="880" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="139" value="connect wallet&amp;nbsp;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+                    <mxGeometry x="1310" y="880" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="143" value="close of Auction&amp;nbsp;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#a20025;fontColor=#ffffff;strokeColor=#6F0000;" parent="1" vertex="1">
+                    <mxGeometry x="2550" y="920" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="144" value="&lt;b&gt;t=deadlin&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="2547" y="881" width="80" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="145" value="&lt;b&gt;t=begin&amp;nbsp;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="1155" y="838" width="70" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="146" value="Owner" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1360" y="778" width="110" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="147" value="Bidder" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1360" y="1060" width="110" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="150" value="&lt;h1 style=&quot;font-size: 15px;&quot;&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;rectangle&amp;nbsp;&lt;/font&gt;&lt;/h1&gt;&lt;div style=&quot;font-size: 15px;&quot;&gt;pour le fonctions , les actions&amp;nbsp; &amp;nbsp;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="1210" width="130" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="151" value="&lt;h1 style=&quot;font-size: 15px;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;ovale&amp;nbsp;&lt;/span&gt;&lt;/h1&gt;&lt;h1 style=&quot;font-size: 15px;&quot;&gt;&lt;span style=&quot;background-color: initial; font-weight: normal;&quot;&gt;pour le debut ,&amp;nbsp; la fin d'un processus&lt;/span&gt;&lt;br&gt;&lt;/h1&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="1280" width="130" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="152" value="&lt;h1 style=&quot;font-size: 15px;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;losange&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color: initial; font-weight: normal;&quot;&gt;pour les conditions&amp;nbsp;&lt;/span&gt;&lt;br&gt;&lt;/h1&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="1360" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="153" value="&lt;h1 style=&quot;font-size: 15px;&quot;&gt;parallélogramme&lt;span style=&quot;font-weight: normal;&quot;&gt; une entrée ou une sortie de donné&lt;/span&gt;&lt;/h1&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1062" y="1401" width="128" height="79" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
