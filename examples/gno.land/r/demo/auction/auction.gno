@@ -63,8 +63,8 @@ func NewAuction(
 	if minPrice <= 0 {
 		panic("minPrice has to be positive")
 	}
-	owner, _ := UserTree.Get(txSender.String()).(*auctionp.User)
-
+	ownr, _ := UserTree.Get(txSender.String())
+	owner := ownr.(*auctionp.User)
 	// create an auction instance
 	auc := auctionp.NewAuction(
 		title,
@@ -91,14 +91,14 @@ func AddBid(auctionID string, price uint64) string {
 	}
 	auction := auc.(*auctionp.Auction)
 	// check if auction is open
-	if auction.GetBegin() <= time.Now() {
+	if auction.GetBegin().Before(time.Now()) {
 		panic("auction is not open yet")
 	}
 	if auction.IsOwner() {
 		panic("owner cannot bid")
 	}
 	// check if auction is still open
-	if auction.GetDeadline() <= time.Now() {
+	if auction.GetDeadline().After(time.Now()) {
 		panic("auction is closed")
 	}
 
@@ -122,19 +122,19 @@ func Render(path string) string {
 
 func renderHomepage() string {
 	var b bytes.Buffer
-	b.WriteString("## Auctions\n\n")
+	b.WriteString("<h1><center>Auctions</center></h1>\n\n")
 	if auctionTree.Size() == 0 {
 		b.WriteString("## No auctions available\n")
 		return b.String()
 	}
 	auctionTree.Iterate("", "", func(key string, value interface{}) bool {
 		auc := value.(*auctionp.Auction)
-		b.WriteString("#### Auction: " + auc.GetTitle() + "\n\n")
-		b.WriteString("## Owner: " + auc.GetOwner().GetName() + "\n")
-		b.WriteString("Description: " + auc.GetDescription() + "\n")
-		b.WriteString("Begin: " + auc.GetBegin().String() + "\n")
-		b.WriteString("Deadline: " + auc.GetDeadline().String() + "\n")
-		b.WriteString(ufmt.Sprintf("First-Price: %d \n", auc.GetPrice()))
+		b.WriteString("## " + auc.GetTitle() + "\n")
+		b.WriteString("### Owner: " + auc.GetOwner().GetName() + "\n")
+		b.WriteString("### Description : " + auc.GetDescription() + "\n\n")
+		b.WriteString("This auction starts on: " + auc.GetBegin().String() + " and ends on: " + auc.GetDeadline().String() + "\n\n")
+
+		b.WriteString(ufmt.Sprintf("### First-Price: %d \n", auc.GetPrice()))
 		b.WriteString("## Bids\n")
 		return true
 	})

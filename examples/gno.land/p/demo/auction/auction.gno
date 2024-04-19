@@ -83,7 +83,7 @@ func (A Auction) GetBids() []*Bid {
 }
 
 func (A Auction) IsOwner() bool {
-	return std.GetOrigCaller() == A.owner.address
+	return std.GetOrigCaller() == A.GetOwner().GetAddress()
 }
 
 func NewBid(bidder *User, amount uint64) *Bid {

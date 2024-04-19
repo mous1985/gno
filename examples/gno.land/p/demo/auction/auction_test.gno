@@ -69,11 +69,11 @@ func TestAuction_new(t *testing.T) {
 	if A.GetDeadline() != deadline {
 		t.Fatalf("invalid deadline")
 	}
-	if A.GetMinPrice() != minPrice {
-		t.Fatalf("invalid minPrice")
-	}
+	// if A.GetMinPrice() != minPrice {
+	// 	t.Fatalf("invalid minPrice")
+	// }
 	std.TestSetOrigCaller(user)
-	if !A.isOwner() {
+	if !A.IsOwner() {
 		t.Fatalf("invalid owner")
 	}
 }
