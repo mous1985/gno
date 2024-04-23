@@ -57,9 +57,9 @@ func (f Forum) GetCategories() []string {
 		index      = 0
 	)
 
-	f.categories.Iterate("", "", func(category *avl.Node) bool {
+	f.categories.Iterate("", "", func(key string, value interface{}) bool {
 		// Add the category to the list
-		categories[index] = category.Key()
+		categories[index] = key
 
 		index++
 
@@ -69,6 +69,7 @@ func (f Forum) GetCategories() []string {
 
 	return categories
 }
+
 // AddModerator adds a moderator for the category,
 // and returns a status indicating if it was a success
 func (f Forum) AddModerator(
@@ -252,8 +253,8 @@ func (f Forum) GetPosts() []*Post {
 	posts := make([]*Post, f.posts.Size())
 
 	index := 0
-	f.posts.Iterate("", "", func(n *avl.Node) bool {
-		posts[index] = n.Value().(*Post)
+	f.posts.Iterate("", "", func(key string, value interface{}) bool {
+		posts[index] = value.(*Post)
 
 		return false
 	})
