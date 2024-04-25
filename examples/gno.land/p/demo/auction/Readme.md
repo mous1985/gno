@@ -5,7 +5,7 @@
 The project is an auction system, we have two users, a bidder with his wallet address to bid. The second is the seller, he shares his *NFT* `(grc721)` to sell.
 in a first step, i'm developing the functions needed to carry out the transaction .
 
-### Seller
+### Owner
 
 - Must have a wallet .
 - Initiate the auction process by listing the item for sale .
@@ -18,15 +18,15 @@ in a first step, i'm developing the functions needed to carry out the transactio
 
 - Must have anough of token on his wallet .
 - Should be able to view the *NFT* available to auction .
-- Must deposit an amount equal to the 10% value of the nft in a smart contract as collateral .
+- Must deposit an amount equal to minimum price of the *NFT* in a smart contract as collateral .
 
 ### Countdown
 
- The coutdown is defining by seller(A special package could be created for the countdown, allowing it to be reused. )
+ The coutdown is defining by Owner(A special package could be created for the countdown, allowing it to be reused. )
 
 ### Logic
 
-The seller have to put his *NFT* in the smart contact (see how it work with ZAK), the same thing for the bidder  .
+The Owner have to put his *NFT* in the smart contact , the same thing for the bidder  .
 
  ***how smart contarct ensures payment:***
 

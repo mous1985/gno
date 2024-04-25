@@ -28,10 +28,10 @@ func NewForum(
 	// Create a new forum instance
 	f := &Forum{
 		name:       name,
-		categories: avl.Tree{},
-		posts:      avl.Tree{},
+		categories: avl.Tree,
+		posts:      avl.Tree,
 		admin:      admin,
-		moderators: avl.Tree{},
+		moderators: avl.Tree,
 	}
 
 	// Instantiate the categories
