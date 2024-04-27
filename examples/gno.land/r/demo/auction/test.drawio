@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="QLp7b73ZQBYeHIeEDoCH" name="Page-1">
-        <mxGraphModel dx="1856" dy="735" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="1856" dy="804" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -34,10 +34,10 @@
                     <mxGeometry x="1315" y="885" width="70" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="143" value="close of Auction&amp;nbsp;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#a20025;fontColor=#ffffff;strokeColor=#6F0000;" parent="1" vertex="1">
-                    <mxGeometry x="2300" y="745" width="80" height="80" as="geometry"/>
+                    <mxGeometry x="2350" y="1021" width="80" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="144" value="&lt;b&gt;t = deadlin&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
-                    <mxGeometry x="2300" y="710" width="80" height="30" as="geometry"/>
+                    <mxGeometry x="2390" y="960" width="80" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="145" value="&lt;b&gt;t=begin&amp;nbsp;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="1155" y="838" width="70" height="30" as="geometry"/>
