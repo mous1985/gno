@@ -65,7 +65,7 @@ func ExecuteOperation(id string) {
     if !exists || op.state != Ready {
         panic("Operation is not ready or does not exist")
     }
-    if !ac.HasRole("executor", std.PrevCaller()) {
+    if !ac.HasRole("executor", std.PrevRealm().Addr()) {
         panic("Unauthorized: Only executor can perform operations")
     }
     op.action()
@@ -74,7 +74,7 @@ func ExecuteOperation(id string) {
 }
 
 func CancelOperation(id string) {
-    if !ac.HasRole("canceller", std.PrevCaller()) {
+    if !ac.HasRole("canceller", std.PrevRealm().Addr()) {
         panic("Unauthorized: Only canceller can cancel operations")
     }
     _, exists := operations[id]
@@ -85,7 +85,7 @@ func CancelOperation(id string) {
 }
 
 func UpdateMinDelay(newDelay time.Duration) {
-    if !ac.HasRole("admin", std.PrevCaller()) {
+    if !ac.HasRole("admin", std.PrevRealm().Addr()) {
         panic("Unauthorized: Only admin can update the minimum delay")
     }
     minDelay = newDelay
