@@ -24,10 +24,10 @@ type AccessControl struct {
 }
 
 // NewAccessControl creates a new instance of AccessControl
-func NewAccessControl() *AccessControl {
+/*func NewAccessControl() *AccessControl {
     return &AccessControl{
         roles: avl.NewTree(),
-        defaultAdminRole: "", // Empty role by default
+        defaultAdminRole: "admin",
     }
 }
 
@@ -99,4 +99,4 @@ func (ac *AccessControl) SetRoleAdmin(role string, adminRole string) {
         roleData := value.(RoleData)
         roleData.adminRole = adminRole
     }
-}
+}*/
