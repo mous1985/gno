@@ -52,7 +52,7 @@ func (ac *AccessControl) GrantRole(role string, account std.Address) {
     value, ok := ac.roles.Get(role)
 
     if !ok {
-        ac.roles.Set(role, RoleData{avl.NewTree(), ac.defaultAdminRole})
+        ac.roles.Set(role, RoleData{avl.NewTree(), ac.defaultAdminRole, true})
         value, _ = ac.roles.Get(role)
     }
 
