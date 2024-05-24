@@ -1,102 +1,86 @@
 package accesscontrol
 
 import (
-    "std"
     "gno.land/p/demo/avl"
+    "std"
 )
 
-type IAccessControl interface {
-    HasRole(role string, account std.Address) bool
-    GetRoleAdmin(role string) string
-    GrantRole(role string, account std.Address)
-    RevokeRole(role string, account std.Address)
-}
-
+// RoleData struct to store role information
 type RoleData struct {
-    hasRole *avl.Tree
-    adminRole string
-    isActive bool
+    HasRole   *avl.Tree // -> std.Address -> bool
+    AdminRole std.Address 
 }
 
-type AccessControl struct {
-    roles *avl.Tree
-    defaultAdminRole string
-}
-
-// NewAccessControl creates a new instance of AccessControl
-/*func NewAccessControl() *AccessControl {
-    return &AccessControl{
-        roles: avl.NewTree(),
-        defaultAdminRole: "admin",
+// NewRoleData creates a new instance of RoleData
+func NewRoleData(adminRole std.Address) *RoleData {
+    return &RoleData{
+        HasRole:   avl.NewTree(),
+        AdminRole: adminRole,
     }
 }
 
-// HasRole checks if an account has a role
-func (ac *AccessControl) HasRole(role string, account std.Address) bool {
-    value, ok := ac.roles.Get(role)
-
-    if ok {
-        roleData := value.(RoleData)
-        return roleData.isActive && roleData.hasRole.Has(account.String())
-    }
-
-    return false
-}
-
-// GrantRole grants a role to an account
-func (ac *AccessControl) GrantRole(role string, account std.Address) {
-    if !ac.HasRole(ac.GetRoleAdmin(role), std.PrevRealm().Addr()) {
-        panic("accesscontrol: caller must have admin role to grant")
-    }
-
-    value, ok := ac.roles.Get(role)
-
-    if !ok {
-        ac.roles.Set(role, RoleData{avl.NewTree(), ac.defaultAdminRole, true})
-        value, _ = ac.roles.Get(role)
-    }
-
-    roleData := value.(RoleData)
-    roleData.hasRole.Set(account.String(), true)
-}
-
-// RevokeRole revokes a role from an account
-func (ac *AccessControl) RevokeRole(role string, account std.Address) {
-    if !ac.HasRole(ac.GetRoleAdmin(role), std.PrevRealm().Addr()) {
-        panic("accesscontrol: caller must have admin role to revoke")
-    }
-
-    value, ok := ac.roles.Get(role)
-
-    if ok {
-        roleData := value.(RoleData)
-        roleData.isActive = false
-        ac.roles.Set(role, roleData)
+// Modifier to check if the caller has the admin role
+func OnlyAdmin(roleData *RoleData) {
+    caller := std.GetOrigCaller()
+    if roleData.AdminRole != caller {
+        panic("accesscontrol: caller does not have the admin role")
     }
 }
 
-// GetRoleAdmin returns the admin role of a role
-func (ac *AccessControl) GetRoleAdmin(role string) string {
-    value, ok := ac.roles.Get(role)
-
-    if ok {
-        roleData := value.(RoleData)
-        return roleData.adminRole
-    }
-
-    return ""
+// Function to check if an account has a specific role
+func HasRole(roleData *RoleData, account std.Address) bool {
+    return roleData.HasRole.Has(account.String())
 }
 
-// SetRoleAdmin sets the admin role of a role
-func (ac *AccessControl) SetRoleAdmin(role string, adminRole string) {
-    if !ac.HasRole(ac.GetRoleAdmin(role), std.PrevRealm().Addr()) {
-        panic("accesscontrol: caller must have admin role to set admin role")
-    }
+// Function to grant a role to an account
+func GrantRole(roleData *RoleData, account std.Address) {
+    OnlyAdmin(roleData)
+    roleData.HasRole.Set(account.String(), true)
+    emitRoleGranted(roleData, account, std.GetOrigCaller())
+}
 
-    value, ok := ac.roles.Get(role)
+// Function to revoke a role from an account
+func RevokeRole(roleData *RoleData, account std.Address) {
+    OnlyAdmin(roleData)
+    roleData.HasRole.Remove(account.String())
+    emitRoleRevoked(roleData, account, std.GetOrigCaller())
+}
 
-    if ok {
-        roleData := value.(RoleData)
-        roleData.adminRole = adminRole
+// Function to renounce a role with caller confirmation
+func RenounceRole(roleData *RoleData, callerConfirmation std.Address) {
+    caller := std.GetOrigCaller()
+    if callerConfirmation != caller {
+        panic("accesscontrol: caller confirmation does not match account")
     }
-}*/
+    roleData.HasRole.Remove(caller.String())
+    emitRoleRevoked(roleData, caller, caller)
+}
+
+// Function to get the admin role of a specific role
+func GetRoleAdmin(roleData *RoleData) std.Address {
+    return roleData.AdminRole
+}
+
+// Function to set the admin role for a specific role
+func SetRoleAdmin(roleData *RoleData, adminRole std.Address) {
+    OnlyAdmin(roleData)
+    previousAdminRole := roleData.AdminRole
+    roleData.AdminRole = adminRole
+    emitRoleAdminChanged(roleData, previousAdminRole, adminRole)
+}
+
+
+// Event for role granted
+func emitRoleGranted(roleData *RoleData, account std.Address, sender std.Address) {
+    std.Emit("RoleGranted", "role", roleData.AdminRole.String(), "account", account.String(), "sender", sender.String())
+}
+
+// Event for role revoked
+func emitRoleRevoked(roleData *RoleData, account std.Address, sender std.Address) {
+    std.Emit("RoleRevoked", "role", roleData.AdminRole.String(), "account", account.String(), "sender", sender.String())
+}
+
+// Event for role admin changed
+func emitRoleAdminChanged(roleData *RoleData, previousAdminRole std.Address, newAdminRole std.Address) {
+    std.Emit("RoleAdminChanged", "previousAdminRole", previousAdminRole.String(), "newAdminRole", newAdminRole.String())
+}
