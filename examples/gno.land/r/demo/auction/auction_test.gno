@@ -17,8 +17,8 @@ func TestAuction(t *testing.T) {
 	std.TestSetOrigCaller(adminAddr)
 
 	// Create an auction that starts almost immediately
-	begin := time.Now().Unix()                   // Auction begins in 1 second
-	end := time.Now().Add(24 * time.Hour).Unix() // Auction ends in 24 hours
+	begin := time.Now().Add(1 * time.Second).Unix() // Auction begins in 1 second
+	end := time.Now().Add(24 * time.Hour).Unix()    // Auction ends in 24 hours
 	result := NewAuction("Test Auction", "A simple test auction", begin, end, 100)
 	if result != "auction created" {
 		t.Errorf("Auction should be created")
@@ -27,8 +27,8 @@ func TestAuction(t *testing.T) {
 		t.Errorf("Auction should be created")
 	}
 
-	// Wait for the auction to start
-	// time.Sleep(2 * time.Second)
+	// Simulate time passing to start the auction
+	setMockCurrentTime(time.Now().Add(2 * time.Second))
 
 	// Place bids by different users
 	user1 := std.Address("user1")
@@ -60,4 +60,6 @@ func TestAuction(t *testing.T) {
 	if !strings.Contains(state, "Test Auction") {
 		t.Errorf("Auction should be in the rendered state")
 	}
+
+	resetMockCurrentTime()
 }

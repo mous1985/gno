@@ -24,7 +24,7 @@ func NewAuction(
 	description string,
 	begin int64,
 	end int64,
-	minPrice uint64,
+	price uint64,
 ) string {
 	txSender := std.GetOrigCaller()
 
@@ -37,8 +37,8 @@ func NewAuction(
 	if end <= begin {
 		panic("end has to be after begin")
 	}
-	if minPrice <= 0 {
-		panic("minPrice has to be positive")
+	if price <= 0 {
+		panic("price has to be positive")
 	}
 
 	auc := auctionp.NewAuction(
@@ -47,7 +47,7 @@ func NewAuction(
 		description,
 		time.Unix(begin, 0),
 		time.Unix(end, 0),
-		minPrice,
+		price,
 	)
 	id := strconv.Itoa(auctionTree.Size())
 	auctionTree.Set(id, auc)
