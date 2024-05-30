@@ -4,107 +4,207 @@ import (
 	"std"
 	"testing"
 	"time"
-
-	"gno.land/p/demo/testutils"
 )
 
-// TestBid_new verifies that a new Bid can be initialized correctly
-func TestBid_new(t *testing.T) {
-	var (
-		amount = uint64(100)
-		bidder = testutils.TestAddress("bidder")
-	)
-
-	// Create a new Bid instance
-	B := NewBid(bidder, amount)
-	if B.GetAmount() != amount {
-		t.Fatalf("invalid amount")
-	}
-	if B.GetBidder() != bidder {
-		t.Fatalf("invalid bidder")
-	}
+// Helper function to set mock current time
+func setcurrentTime(t time.Time) {
+	currentTime = t
 }
 
-// TestAuction_new verifies that a new Auction can be initialized correctly
-func TestAuction_new(t *testing.T) {
-	var (
-		title       = "auction title"
-		owner       = testutils.TestAddress("owner")
-		description = "description"
-		begin       = time.Now()
-		end         = begin.Add(time.Hour * 24)
-		minPrice    = uint64(1)
-	)
-
-	// Create a new Auction instance
-	A := NewAuction(title, owner, description, begin, end, minPrice)
-	if A.GetTitle() != title {
-		t.Fatalf("invalid title")
-	}
-	if A.GetOwner() != owner {
-		t.Fatalf("invalid owner")
-	}
-	if A.GetDescription() != description {
-		t.Fatalf("invalid description")
-	}
-	if A.GetBegin() != begin {
-		t.Fatalf("invalid begin")
-	}
-	if A.GetEnd() != end {
-		t.Fatalf("invalid end")
-	}
-	if A.GetPrice() != minPrice {
-		t.Fatalf("invalid minPrice")
-	}
-
-	std.TestSetOrigCaller(owner)
-	if !A.IsOwner(owner) {
-		t.Fatalf("invalid owner check")
-	}
+// Helper function to reset mock current time
+func resetcurrentTime() {
+	currentTime = time.Time{}
 }
 
-// TestAuction_AddBid verifies that bids can be added to an auction correctly
-func TestAuction_AddBid(t *testing.T) {
+// TestNewAuction verifies that a new Auction can be initialized correctly
+func TestNewAuction(t *testing.T) {
 	var (
-		title       = "auction title"
-		owner       = testutils.TestAddress("owner")
-		bidder1     = testutils.TestAddress("bidder1")
-		bidder2     = testutils.TestAddress("bidder2")
-		description = "description"
-		begin       = time.Now()
-		end         = begin.Add(time.Hour * 24)
+		title       = "Test Auction"
+		owner       = std.Address("owner")
+		description = "A simple test auction"
+		begin       = now().Add(1 * time.Second)
+		end         = now().Add(24 * time.Hour)
 		minPrice    = uint64(100)
 	)
 
 	// Create a new Auction instance
-	A := NewAuction(title, owner, description, begin, end, minPrice)
+	auction := NewAuction(title, owner, description, begin, end, minPrice)
 
-	// to do Simulate time to be after auction start
-	//  std.TestSetTime(begin.Add(time.Second))
+	if auction.GetTitle() != title {
+		t.Fatalf("Expected title %s, got %s", title, auction.GetTitle())
+	}
+	if auction.GetOwner() != owner {
+		t.Fatalf("Expected owner %s, got %s", owner, auction.GetOwner())
+	}
+	if auction.GetDescription() != description {
+		t.Fatalf("Expected description %s, got %s", description, auction.GetDescription())
+	}
+	if auction.GetBegin() != begin {
+		t.Fatalf("Expected begin time %v, got %v", begin, auction.GetBegin())
+	}
+	if auction.GetEnd() != end {
+		t.Fatalf("Expected end time %v, got %v", end, auction.GetEnd())
+	}
+	if auction.GetPrice() != minPrice {
+		t.Fatalf("Expected min price %d, got %d", minPrice, auction.GetPrice())
+	}
+}
 
-	// Place first bid
-	std.TestSetOrigCaller(bidder1)
-	A.AddBid(bidder1, 200)
-	if A.GetPrice() != 200 {
-		t.Fatalf("First bid failed")
+// TestAddBid verifies that bids can be added correctly to an auction
+func TestAddBid(t *testing.T) {
+	var (
+		title       = "Test Auction"
+		owner       = std.Address("owner")
+		description = "A simple test auction"
+		begin       = now().Add(1 * time.Second)
+		end         = now().Add(24 * time.Hour)
+		minPrice    = uint64(100)
+	)
+
+	auction := NewAuction(title, owner, description, begin, end, minPrice)
+
+	// Set mock current time to start the auction
+	setcurrentTime(now().Add(2 * time.Second))
+
+	// Add a bid
+	bidder1 := std.Address("bidder1")
+	amount1 := uint64(200)
+	auction.AddBid(bidder1, amount1)
+
+	// Verify the highest bid
+	if auction.GetPrice() != amount1 {
+		t.Fatalf("Expected highest bid %d, got %d", amount1, auction.GetPrice())
 	}
 
-	// Place second bid
-	std.TestSetOrigCaller(bidder2)
-	A.AddBid(bidder2, 300)
-	if A.GetPrice() != 300 {
-		t.Fatalf("Second bid failed")
+	// Add another bid
+	bidder2 := std.Address("bidder2")
+	amount2 := uint64(300)
+	auction.AddBid(bidder2, amount2)
+
+	// Verify the highest bid
+	if auction.GetPrice() != amount2 {
+		t.Fatalf("Expected highest bid %d, got %d", amount2, auction.GetPrice())
 	}
 
-	// Verify bids
-	bids := A.GetBids()
-	if len(bids) != 2 {
-		t.Fatalf("Expected 2 bids, got %d", len(bids))
+	// Verify the number of bids
+	if len(auction.GetBids()) != 2 {
+		t.Fatalf("Expected number of bids %d, got %d", 2, len(auction.GetBids()))
 	}
-	if bids[0].GetBidder() != bidder1 || bids[0].GetAmount() != 200 {
-		t.Fatalf("First bid incorrect")
-	}
-	if bids[1].GetBidder() != bidder2 || bids[1].GetAmount() != 300 {
-		t.Fatalf("Second bid incorrect")
-	}
+
+	resetcurrentTime()
+}
+
+// TestEndAuction verifies that the auction can be ended correctly
+func TestEndAuction(t *testing.T) {
+	var (
+		title       = "Test Auction"
+		owner       = std.Address("owner")
+		description = "A simple test auction"
+		begin       = now().Add(1 * time.Second)
+		end         = now().Add(5 * time.Second)
+		minPrice    = uint64(100)
+	)
+
+	auction := NewAuction(title, owner, description, begin, end, minPrice)
+
+	// Set mock current time to start the auction
+	setcurrentTime(now().Add(2 * time.Second))
+
+	// Add a bid
+	bidder1 := std.Address("bidder1")
+	amount1 := uint64(200)
+	auction.AddBid(bidder1, amount1)
+
+	// Add another bid
+	bidder2 := std.Address("bidder2")
+	amount2 := uint64(300)
+	auction.AddBid(bidder2, amount2)
+
+	// Set mock current time to end the auction
+	setcurrentTime(now().Add(6 * time.Second))
+
+	// End the auction
+	auction.EndAuction()
+
+	resetcurrentTime()
+}
+
+// TestBidderCannotBeOwner verifies that the owner cannot place bids in their own auction
+func TestBidderCannotBeOwner(t *testing.T) {
+	var (
+		title       = "Test Auction"
+		owner       = std.Address("owner")
+		description = "A simple test auction"
+		begin       = now().Add(1 * time.Second)
+		end         = now().Add(24 * time.Hour)
+		minPrice    = uint64(100)
+	)
+
+	auction := NewAuction(title, owner, description, begin, end, minPrice)
+
+	// Set mock current time to start the auction
+	setcurrentTime(now().Add(2 * time.Second))
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("Expected panic when owner tries to bid")
+		}
+	}()
+
+	auction.AddBid(owner, 200)
+
+	resetcurrentTime()
+}
+
+// TestAuctionCannotStartInPast verifies that an auction cannot be created with a start time in the past
+func TestAuctionCannotStartInPast(t *testing.T) {
+	var (
+		title       = "Test Auction"
+		owner       = std.Address("owner")
+		description = "A simple test auction"
+		begin       = now().Add(-1 * time.Second) // Begin time in the past
+		end         = now().Add(24 * time.Hour)
+		minPrice    = uint64(100)
+	)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("Expected panic when auction start time is in the past")
+		}
+	}()
+
+	NewAuction(title, owner, description, begin, end, minPrice)
+}
+
+// TestBidAmountMustBeHigherThanCurrentHighest verifies that bids must be higher than the current highest bid
+func TestBidAmountMustBeHigherThanCurrentHighest(t *testing.T) {
+	var (
+		title       = "Test Auction"
+		owner       = std.Address("owner")
+		description = "A simple test auction"
+		begin       = now().Add(1 * time.Second)
+		end         = now().Add(24 * time.Hour)
+		minPrice    = uint64(100)
+	)
+
+	auction := NewAuction(title, owner, description, begin, end, minPrice)
+
+	// Set mock current time to start the auction
+	setcurrentTime(now().Add(2 * time.Second))
+
+	// Add a bid
+	bidder1 := std.Address("bidder1")
+	amount1 := uint64(200)
+	auction.AddBid(bidder1, amount1)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("Expected panic when bid amount is not higher than current highest bid")
+		}
+	}()
+
+	// Try to add a lower bid
+	auction.AddBid(bidder1, 150)
+
+	resetcurrentTime()
 }

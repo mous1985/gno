@@ -8,6 +8,16 @@ import (
 	"gno.land/p/demo/avl"
 )
 
+var currentTime time.Time
+
+// Mockable function to get current time
+func now() time.Time {
+	if !currentTime.IsZero() {
+		return currentTime
+	}
+	return time.Now()
+}
+
 // Main struct
 type Auction struct {
 	Title       string
@@ -23,6 +33,7 @@ type Bid struct {
 	Bidder std.Address
 	Amount uint64
 }
+
 type EventEnd struct {
 	Winner std.Address
 	Amount uint64
@@ -36,16 +47,19 @@ func NewAuction(
 	end time.Time,
 	minPrice uint64,
 ) *Auction {
+	if begin.Before(now()) {
+		panic("begin time cannot be in the past")
+	}
 	auction := &Auction{
 		Title:       title,
 		Description: description,
 		Owner:       owner,
 		Bids:        avl.NewTree(),
-		Start:       startTime,
+		Begin:       begin,
 		End:         end,
 		Price:       minPrice,
 	}
-	std.Emit("AuctionStart", "title", title, "time", startTime.String())
+	std.Emit("AuctionStart", "title", title, "time", begin.String())
 	return auction
 }
 
@@ -62,7 +76,7 @@ func (A Auction) GetOwner() std.Address {
 }
 
 func (A Auction) GetBegin() time.Time {
-	return A.Start
+	return A.Begin
 }
 
 func (A Auction) GetEnd() time.Time {
@@ -94,8 +108,17 @@ func NewBid(bidder std.Address, amount uint64) *Bid {
 }
 
 func (A *Auction) AddBid(bidder std.Address, amount uint64) {
+	if A.IsOwner(bidder) {
+		panic("owner cannot bid")
+	}
 	if amount <= A.Price {
 		panic("bid amount must be higher than current highest bid")
+	}
+	if now().Before(A.Begin) {
+		panic("auction is not open yet")
+	}
+	if now().After(A.End) {
+		panic("auction is closed")
 	}
 	key := strconv.Itoa(A.Bids.Size())
 	bid := NewBid(bidder, amount)
@@ -113,7 +136,7 @@ func (B Bid) GetAmount() uint64 {
 }
 
 func (A *Auction) EndAuction() {
-	if time.Now().Before(A.End) {
+	if now().Before(A.End) {
 		panic("Auction cannot end before the end time")
 	}
 	if A.Bids.Size() == 0 {
