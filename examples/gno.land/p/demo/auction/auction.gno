@@ -83,10 +83,12 @@ func (a Auction) GetBids() []*Bid {
 	return bids
 }
 
+// IsOwner checks if the given address is the owner of the auction.
 func (a Auction) IsOwner(address std.Address) bool {
 	return address == a.GetOwner()
 }
 
+// NewBid creates a new bid.
 func NewBid(bidder std.Address, amount uint64) *Bid {
 	return &Bid{
 		bidder: bidder,
@@ -94,6 +96,7 @@ func NewBid(bidder std.Address, amount uint64) *Bid {
 	}
 }
 
+// AddBid adds a new bid to the auction.
 func (a *Auction) AddBid(bidder std.Address, amount uint64) {
 	if amount <= a.price {
 		panic("bid amount must be higher than current highest bid")
@@ -105,14 +108,17 @@ func (a *Auction) AddBid(bidder std.Address, amount uint64) {
 	std.Emit("BidPlaced", "bidder", bidder.String(), "amount", strconv.FormatUint(amount, 10))
 }
 
+// GetBidder returns the address of the bidder.
 func (b Bid) GetBidder() std.Address {
 	return b.bidder
 }
 
+// GetAmount returns the amount of the bid.
 func (b Bid) GetAmount() uint64 {
 	return b.amount
 }
 
+// EndAuction ends the auction.
 func (a *Auction) EndAuction() {
 	if time.Now().Before(a.end) {
 		panic("Auction cannot end before the end time")
