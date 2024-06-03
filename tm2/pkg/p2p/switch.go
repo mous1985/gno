@@ -7,14 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gnolang/gno/telemetry"
-	"github.com/gnolang/gno/telemetry/metrics"
 	"github.com/gnolang/gno/tm2/pkg/cmap"
 	"github.com/gnolang/gno/tm2/pkg/errors"
 	"github.com/gnolang/gno/tm2/pkg/p2p/config"
 	"github.com/gnolang/gno/tm2/pkg/p2p/conn"
 	"github.com/gnolang/gno/tm2/pkg/random"
 	"github.com/gnolang/gno/tm2/pkg/service"
+	"github.com/gnolang/gno/tm2/pkg/telemetry"
+	"github.com/gnolang/gno/tm2/pkg/telemetry/metrics"
 )
 
 const (
@@ -246,7 +246,12 @@ func (sw *Switch) OnStop() {
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	startTime := time.Now()
-	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+
+	sw.Logger.Debug(
+		"Broadcast",
+		"channel", chID,
+		"value", fmt.Sprintf("%X", msgBytes),
+	)
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
@@ -712,5 +717,29 @@ func (sw *Switch) addPeer(p Peer) error {
 
 	sw.Logger.Info("Added peer", "peer", p)
 
+	// Update the telemetry data
+	sw.logTelemetry()
+
 	return nil
+}
+
+// logTelemetry logs the switch telemetry data
+// to global metrics funnels
+func (sw *Switch) logTelemetry() {
+	// Update the telemetry data
+	if !telemetry.MetricsEnabled() {
+		return
+	}
+
+	// Fetch the number of peers
+	outbound, inbound, dialing := sw.NumPeers()
+
+	// Log the outbound peer count
+	metrics.OutboundPeers.Record(context.Background(), int64(outbound))
+
+	// Log the inbound peer count
+	metrics.InboundPeers.Record(context.Background(), int64(inbound))
+
+	// Log the dialing peer count
+	metrics.DialingPeers.Record(context.Background(), int64(dialing))
 }
