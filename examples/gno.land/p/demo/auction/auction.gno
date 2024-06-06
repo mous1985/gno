@@ -4,41 +4,29 @@ import (
 	"std"
 	"strconv"
 	"time"
-
-	"gno.land/p/demo/avl"
 )
 
-var currentTime time.Time
-
-// Mockable function to get current time
-func now() time.Time {
-	if !currentTime.IsZero() {
-		return currentTime
-	}
-	return time.Now()
-}
-
-// Main struct
+// Auction struct
 type Auction struct {
 	Title       string
 	Owner       std.Address
 	Description string
-	Begin       time.Time
-	End         time.Time
-	Price       uint64
-	Bids        *avl.Tree // key: std.Address, value: Bid
+	begin       time.Time
+	end         time.Time
+	price       uint64
+	bids        []*Bid
+	State       string // "open" or "closed"
 }
 
+// Bid struct
 type Bid struct {
 	Bidder std.Address
 	Amount uint64
 }
 
-type EventEnd struct {
-	Winner std.Address
-	Amount uint64
-}
+var currentTime time.Time
 
+// NewAuction creates a new auction
 func NewAuction(
 	title string,
 	owner std.Address,
@@ -47,102 +35,102 @@ func NewAuction(
 	end time.Time,
 	minPrice uint64,
 ) *Auction {
-	if begin.Before(now()) {
-		panic("begin time cannot be in the past")
-	}
-	auction := &Auction{
+	return &Auction{
 		Title:       title,
 		Description: description,
 		Owner:       owner,
-		Bids:        avl.NewTree(),
-		Begin:       begin,
-		End:         end,
-		Price:       minPrice,
-	}
-	std.Emit("AuctionStart", "title", title, "time", begin.String())
-	return auction
-}
-
-func (A Auction) GetTitle() string {
-	return A.Title
-}
-
-func (A Auction) GetDescription() string {
-	return A.Description
-}
-
-func (A Auction) GetOwner() std.Address {
-	return A.Owner
-}
-
-func (A Auction) GetBegin() time.Time {
-	return A.Begin
-}
-
-func (A Auction) GetEnd() time.Time {
-	return A.End
-}
-
-func (A Auction) GetPrice() uint64 {
-	return A.Price
-}
-
-func (A Auction) GetBids() []*Bid {
-	bids := make([]*Bid, 0, A.Bids.Size())
-	A.Bids.Iterate("", "", func(key string, value interface{}) bool {
-		bids = append(bids, value.(*Bid))
-		return false
-	})
-	return bids
-}
-
-func (A Auction) IsOwner(address std.Address) bool {
-	return address == A.GetOwner()
-}
-
-func NewBid(bidder std.Address, amount uint64) *Bid {
-	return &Bid{
-		Bidder: bidder,
-		Amount: amount,
+		begin:       begin,
+		end:         end,
+		price:       minPrice,
+		bids:        []*Bid{},
+		State:       "open",
 	}
 }
 
-func (A *Auction) AddBid(bidder std.Address, amount uint64) {
-	if A.IsOwner(bidder) {
-		panic("owner cannot bid")
-	}
-	if amount <= A.Price {
-		panic("bid amount must be higher than current highest bid")
-	}
-	if now().Before(A.Begin) {
-		panic("auction is not open yet")
-	}
-	if now().After(A.End) {
-		panic("auction is closed")
-	}
-	key := strconv.Itoa(A.Bids.Size())
-	bid := NewBid(bidder, amount)
-	A.Bids.Set(key, bid)
-	A.Price = amount
-	std.Emit("BidPlaced", "bidder", bidder.String(), "amount", strconv.FormatUint(amount, 10))
+// Getter methods for private fields
+func (a *Auction) GetBegin() time.Time {
+	return a.begin
 }
 
-func (B Bid) GetBidder() std.Address {
-	return B.Bidder
+func (a *Auction) GetEnd() time.Time {
+	return a.end
 }
 
-func (B Bid) GetAmount() uint64 {
-	return B.Amount
+func (a *Auction) GetPrice() uint64 {
+	return a.price
 }
 
-func (A *Auction) EndAuction() {
-	if now().Before(A.End) {
+func (a *Auction) GetBids() []*Bid {
+	return a.bids
+}
+
+// Setter methods for the owner to modify fields
+func (a *Auction) SetTitle(caller std.Address, title string) {
+	if caller != a.Owner {
+		panic("Only the owner can modify the title")
+	}
+	a.Title = title
+}
+
+func (a *Auction) SetDescription(caller std.Address, description string) {
+	if caller != a.Owner {
+		panic("Only the owner can modify the description")
+	}
+	a.Description = description
+}
+
+// AddBid adds a new bid to the auction
+func (a *Auction) AddBid(bidder std.Address, amount uint64) {
+	if now().Before(a.begin) {
+		panic("Auction has not started yet")
+	}
+	if now().After(a.end) {
+		panic("Auction has already ended")
+	}
+	if amount <= a.price {
+		panic("Bid amount must be higher than the current highest bid")
+	}
+	bid := &Bid{Bidder: bidder, Amount: amount}
+	a.bids = append(a.bids, bid)
+	a.price = amount
+	std.Emit("BidPlaced", "auction", a.Title, "bidder", bidder.String(), "amount", strconv.FormatUint(amount, 10))
+}
+
+// IsOwnedBy checks if the given address is the owner of the auction
+func (a *Auction) IsOwnedBy(address std.Address) bool {
+	return a.Owner == address
+}
+
+// EndAuction ends the auction
+func (a *Auction) EndAuction(caller std.Address) {
+	if caller != a.Owner {
+		panic("Only the owner can end the auction")
+	}
+	if now().Before(a.end) {
 		panic("Auction cannot end before the end time")
 	}
-	if A.Bids.Size() == 0 {
-		panic("No bids placed")
+	if a.State == "closed" {
+		panic("Auction is already closed")
 	}
-	highestBid := A.GetPrice()
-	winner := A.GetBids()[A.Bids.Size()-1].Bidder
+	a.State = "closed"
+	if len(a.bids) == 0 {
+		std.Emit("AuctionEndedNoBids", "auction", a.Title)
+		return
+	}
+	highestBid := a.price
+	winner := a.bids[len(a.bids)-1].Bidder
 	std.Emit("AuctionEnded", "winner", winner.String(), "amount", strconv.FormatUint(highestBid, 10))
+}
+
+// SetCurrentTime sets the current time for testing purposes
+func SetCurrentTime(t time.Time) {
+	currentTime = t
+}
+
+// now returns the current time, allowing for mocking in tests
+func now() time.Time {
+	if !currentTime.IsZero() {
+		return currentTime
+	}
+	return time.Now()
 }
