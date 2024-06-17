@@ -10,69 +10,75 @@ import (
 )
 
 // Helper function to set the mock current time
-func setcurrentTime(t time.Time) {
+func setCurrentTime(t time.Time) {
 	currentTime = t
 }
 
 // Helper function to reset the mock current time
-func resetcurrentTime() {
+func resetCurrentTime() {
 	currentTime = time.Time{}
 }
 
 func TestAuction(t *testing.T) {
+	// Initialize the router and handlers
+	init()
+
 	// Simulate the admin creating an auction
 	adminAddr := std.Address("admin")
-
-	// Set the caller to admin
 	std.TestSetOrigCaller(adminAddr)
 
 	// Create an auction that starts almost immediately
 	begin := now().Add(1 * time.Second).Unix() // Auction begins in 1 second
 	end := now().Add(24 * time.Hour).Unix()    // Auction ends in 24 hours
-	auc := NewAuction("Test Auction", "A simple test auction", begin, end, 100)
-	if auc == nil {
-		t.Errorf("Auction should be created")
-	}
-	if auctionTree.Size() != 1 {
-		t.Errorf("Auction should be created")
+	CreateAuction("Test Auction", "A simple test auction", begin, end, 100)
+
+	// Check if auction is in the upcoming section
+	setCurrentTime(now().Add(2 * time.Second))
+	updateAuctionStates()
+	upcomingPage := Render("upcoming")
+	if !strings.Contains(upcomingPage, "Test Auction") {
+		t.Errorf("Auction should be listed in upcoming auctions")
 	}
 
 	// Simulate time passing to start the auction
-	setcurrentTime(now().Add(2 * time.Second))
+	setCurrentTime(now().Add(25 * time.Hour))
+	updateAuctionStates()
 
-	// Place bids by different users
+	// Check if auction is in the ongoing section
+	ongoingPage := Render("ongoing")
+	if !strings.Contains(ongoingPage, "Test Auction") {
+		t.Errorf("Auction should be listed in ongoing auctions")
+	}
+
+	// Simulate users placing bids
 	user1 := std.Address("user1")
 	user2 := std.Address("user2")
 
 	// Set the caller to user1 and place a bid
 	std.TestSetOrigCaller(user1)
-	result := AddBid("0", 200)
-	if result != "bid placed" {
-		t.Errorf("Bid should be placed")
-	}
+	PlaceBid(0, 200)
 
 	// Set the caller to user2 and place a bid
 	std.TestSetOrigCaller(user2)
-	result = AddBid("0", 300)
-	if result != "bid placed" {
-		t.Errorf("Bid should be placed")
-	}
+	PlaceBid(0, 300)
 
-	// Ensure the highest bid is correct
-	aucInterface, ok := auctionTree.Get("0")
-	if !ok {
-		t.Errorf("Auction should exist")
-	}
-	auc = aucInterface.(*auctionp.Auction)
-	if auc.GetPrice() != 300 {
+	// Check the details of the auction to verify bids
+	auctionDetails := Render("auction/0")
+	if !strings.Contains(auctionDetails, "300") {
 		t.Errorf("Highest bid should be 300")
 	}
 
-	// Render the state
-	state := Render("")
-	if !strings.Contains(state, "Test Auction") {
-		t.Errorf("Auction should be in the rendered state")
+	// End the auction
+	std.TestSetOrigCaller(adminAddr)
+	EndAuction(0)
+
+	// Check if auction is in the closed state
+	setCurrentTime(now().Add(26 * time.Hour))
+	updateAuctionStates()
+	auctionDetails = Render("auction/0")
+	if !strings.Contains(auctionDetails, "Auction ended") {
+		t.Errorf("Auction should be ended")
 	}
 
-	resetcurrentTime()
+	resetCurrentTime()
 }
