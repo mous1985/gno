@@ -31,14 +31,14 @@ func TestNewAuction(t *testing.T) {
 	if auction.Description != "This is a test auction" {
 		t.Fatalf("expected auction description to be 'This is a test auction', got '%s'", auction.Description)
 	}
-	if auction.GetBegin() != begin {
-		t.Fatalf("expected auction begin time to be '%s', got '%s'", begin, auction.GetBegin())
+	if auction.Begin != begin {
+		t.Fatalf("expected auction begin time to be '%s', got '%s'", begin, auction.Begin)
 	}
-	if auction.GetEnd() != end {
-		t.Fatalf("expected auction end time to be '%s', got '%s'", end, auction.GetEnd())
+	if auction.End != end {
+		t.Fatalf("expected auction end time to be '%s', got '%s'", end, auction.End)
 	}
-	if auction.GetPrice() != minPrice {
-		t.Fatalf("expected auction price to be '%d', got '%d'", minPrice, auction.GetPrice())
+	if auction.Price != minPrice {
+		t.Fatalf("expected auction price to be '%d', got '%d'", minPrice, auction.Price)
 	}
 	if auction.State != "upcoming" {
 		t.Fatalf("expected auction state to be 'upcoming', got '%s'", auction.State)
@@ -70,14 +70,14 @@ func TestAddBid(t *testing.T) {
 	auction.AddBid(bidder1, 200)
 	resetCurrentTime()
 
-	if auction.GetPrice() != 200 {
-		t.Fatalf("expected auction price to be '200', got '%d'", auction.GetPrice())
+	if auction.Price != 200 {
+		t.Fatalf("expected auction price to be '200', got '%d'", auction.Price)
 	}
-	if len(auction.GetBids()) != 1 {
-		t.Fatalf("expected number of bids to be '1', got '%d'", len(auction.GetBids()))
+	if len(auction.Bids) != 1 {
+		t.Fatalf("expected number of bids to be '1', got '%d'", len(auction.Bids))
 	}
-	if auction.GetBids()[0].Bidder != bidder1 {
-		t.Fatalf("expected bidder to be 'bidder1', got '%s'", auction.GetBids()[0].Bidder)
+	if auction.Bids[0].Bidder != bidder1 {
+		t.Fatalf("expected bidder to be 'bidder1', got '%s'", auction.Bids[0].Bidder)
 	}
 
 	// Test higher bid
@@ -85,14 +85,14 @@ func TestAddBid(t *testing.T) {
 	auction.AddBid(bidder2, 300)
 	resetCurrentTime()
 
-	if auction.GetPrice() != 300 {
-		t.Fatalf("expected auction price to be '300', got '%d'", auction.GetPrice())
+	if auction.Price != 300 {
+		t.Fatalf("expected auction price to be '300', got '%d'", auction.Price)
 	}
-	if len(auction.GetBids()) != 2 {
-		t.Fatalf("expected number of bids to be '2', got '%d'", len(auction.GetBids()))
+	if len(auction.Bids) != 2 {
+		t.Fatalf("expected number of bids to be '2', got '%d'", len(auction.Bids))
 	}
-	if auction.GetBids()[1].Bidder != bidder2 {
-		t.Fatalf("expected bidder to be 'bidder2', got '%s'", auction.GetBids()[1].Bidder)
+	if auction.Bids[1].Bidder != bidder2 {
+		t.Fatalf("expected bidder to be 'bidder2', got '%s'", auction.Bids[1].Bidder)
 	}
 
 	// Test bid lower than current price
@@ -145,10 +145,10 @@ func TestEndAuction(t *testing.T) {
 	if auction.State != "closed" {
 		t.Fatalf("expected auction state to be 'closed', got '%s'", auction.State)
 	}
-	if len(auction.GetBids()) == 0 {
+	if len(auction.Bids) == 0 {
 		t.Fatalf("expected at least one bid to be present")
 	}
-	if auction.GetBids()[len(auction.GetBids())-1].Bidder != bidder {
-		t.Fatalf("expected winner to be 'bidder', got '%s'", auction.GetBids()[len(auction.GetBids())-1].Bidder)
+	if auction.Bids[len(auction.Bids)-1].Bidder != bidder {
+		t.Fatalf("expected winner to be 'bidder', got '%s'", auction.Bids[len(auction.Bids)-1].Bidder)
 	}
 }
