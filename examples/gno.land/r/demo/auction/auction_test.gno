@@ -5,23 +5,19 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	auctionp "gno.land/p/demo/auction"
 )
 
-// Helper function to set the mock current time
 func setCurrentTime(t time.Time) {
 	currentTime = t
 }
 
-// Helper function to reset the mock current time
 func resetCurrentTime() {
 	currentTime = time.Time{}
 }
 
 func TestAuction(t *testing.T) {
 	// Initialize the router and handlers
-	init()
+	initRouter()
 
 	// Simulate the admin creating an auction
 	adminAddr := std.Address("admin")
@@ -33,7 +29,7 @@ func TestAuction(t *testing.T) {
 	CreateAuction("Test Auction", "A simple test auction", begin, end, 100)
 
 	// Check if auction is in the upcoming section
-	setCurrentTime(now().Add(2 * time.Second))
+	setCurrentTime(time.Unix(begin, 0))
 	updateAuctionStates()
 	upcomingPage := Render("upcoming")
 	if !strings.Contains(upcomingPage, "Test Auction") {
@@ -41,7 +37,7 @@ func TestAuction(t *testing.T) {
 	}
 
 	// Simulate time passing to start the auction
-	setCurrentTime(now().Add(25 * time.Hour))
+	setCurrentTime(time.Unix(begin+10, 0))
 	updateAuctionStates()
 
 	// Check if auction is in the ongoing section
@@ -73,7 +69,7 @@ func TestAuction(t *testing.T) {
 	EndAuction(0)
 
 	// Check if auction is in the closed state
-	setCurrentTime(now().Add(26 * time.Hour))
+	setCurrentTime(time.Unix(end+1, 0))
 	updateAuctionStates()
 	auctionDetails = Render("auction/0")
 	if !strings.Contains(auctionDetails, "Auction ended") {

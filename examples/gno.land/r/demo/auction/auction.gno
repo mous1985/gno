@@ -16,7 +16,7 @@ var (
 	router      *mux.Router
 )
 
-func init() {
+func initRouter() {
 	router = mux.NewRouter()
 	router.HandleFunc("", renderHomepage)
 	router.HandleFunc("create", renderCreateAuction)
@@ -167,4 +167,15 @@ func updateAuctionStates() {
 			auc.State = "closed"
 		}
 	}
+}
+
+func now() time.Time {
+	if !currentTime.IsZero() {
+		return currentTime
+	}
+	return time.Now()
+}
+
+func SetCurrentTime(t time.Time) {
+	currentTime = t
 }
