@@ -12,7 +12,6 @@ import (
 
 var (
 	auctionList []*auctionp.Auction
-	currentTime time.Time
 	router      *mux.Router
 )
 
@@ -159,7 +158,7 @@ func renderAuctionDetails(res *mux.ResponseWriter, req *mux.Request) {
 
 // Update the auction states based on the current time
 func updateAuctionStates() {
-	now := now()
+	now := time.Now()
 	for _, auc := range auctionList {
 		if auc.State == "upcoming" && now.After(auc.Begin) {
 			auc.State = "ongoing"
@@ -167,15 +166,4 @@ func updateAuctionStates() {
 			auc.State = "closed"
 		}
 	}
-}
-
-func now() time.Time {
-	if !currentTime.IsZero() {
-		return currentTime
-	}
-	return time.Now()
-}
-
-func SetCurrentTime(t time.Time) {
-	currentTime = t
 }

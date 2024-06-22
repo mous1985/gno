@@ -7,14 +7,6 @@ import (
 	"time"
 )
 
-func setCurrentTime(t time.Time) {
-	currentTime = t
-}
-
-func resetCurrentTime() {
-	currentTime = time.Time{}
-}
-
 func TestAuction(t *testing.T) {
 	// Initialize the router and handlers
 	initRouter()
@@ -24,12 +16,13 @@ func TestAuction(t *testing.T) {
 	std.TestSetOrigCaller(adminAddr)
 
 	// Create an auction that starts almost immediately
-	begin := now().Add(1 * time.Second).Unix() // Auction begins in 1 second
-	end := now().Add(24 * time.Hour).Unix()    // Auction ends in 24 hours
+	begin := time.Now().Add(1 * time.Second).Unix() // Auction begins in 1 second
+	end := time.Now().Add(24 * time.Hour).Unix()    // Auction ends in 24 hours
 	CreateAuction("Test Auction", "A simple test auction", begin, end, 100)
 
 	// Check if auction is in the upcoming section
-	setCurrentTime(time.Unix(begin, 0))
+	std.TestSkipHeights(1) // Skip 1 block to simulate time passage
+
 	updateAuctionStates()
 	upcomingPage := Render("upcoming")
 	if !strings.Contains(upcomingPage, "Test Auction") {
@@ -37,11 +30,12 @@ func TestAuction(t *testing.T) {
 	}
 
 	// Simulate time passing to start the auction
-	setCurrentTime(time.Unix(begin+10, 0))
+	std.TestSkipHeights(360) // Skip 360 blocks (1800 seconds or 30 minutes)
 	updateAuctionStates()
 
 	// Check if auction is in the ongoing section
 	ongoingPage := Render("ongoing")
+
 	if !strings.Contains(ongoingPage, "Test Auction") {
 		t.Errorf("Auction should be listed in ongoing auctions")
 	}
@@ -69,12 +63,10 @@ func TestAuction(t *testing.T) {
 	EndAuction(0)
 
 	// Check if auction is in the closed state
-	setCurrentTime(time.Unix(end+1, 0))
+	std.TestSkipHeights(8640) // Skip 8640 blocks (43200 seconds or 12 hours)
 	updateAuctionStates()
 	auctionDetails = Render("auction/0")
 	if !strings.Contains(auctionDetails, "Auction ended") {
 		t.Errorf("Auction should be ended")
 	}
-
-	resetCurrentTime()
 }
