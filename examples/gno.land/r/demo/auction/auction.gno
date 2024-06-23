@@ -1,9 +1,9 @@
 package auction
 
 import (
+	"bytes"
 	"std"
 	"strconv"
-	"strings"
 	"time"
 
 	auctionp "gno.land/p/demo/auction"
@@ -12,16 +12,17 @@ import (
 
 var (
 	auctionList []*auctionp.Auction
+	currentTime time.Time
 	router      *mux.Router
 )
 
-func initRouter() {
+func init() {
 	router = mux.NewRouter()
 	router.HandleFunc("", renderHomepage)
-	router.HandleFunc("create", renderCreateAuction)
-	router.HandleFunc("upcoming", renderUpcomingAuctions)
-	router.HandleFunc("ongoing", renderOngoingAuctions)
-	router.HandleFunc("auction/{id}", renderAuctionDetails)
+	router.HandleFunc("/create", renderCreateAuction)
+	router.HandleFunc("/upcoming", renderUpcomingAuctions)
+	router.HandleFunc("/ongoing", renderOngoingAuctions)
+	router.HandleFunc("/auction/{id}", renderAuctionDetails)
 }
 
 // CreateAuction handles the creation of a new auction
@@ -41,7 +42,9 @@ func PlaceBid(id int, amount uint64) string {
 		panic("Invalid auction ID")
 	}
 	auction := auctionList[id]
-	auction.AddBid(caller, amount)
+	if err := auction.AddBid(caller, amount); err != nil {
+		panic(err.Error())
+	}
 	return "Bid placed successfully"
 }
 
@@ -52,7 +55,9 @@ func EndAuction(id int) string {
 		panic("Invalid auction ID")
 	}
 	auction := auctionList[id]
-	auction.EndAuction(caller)
+	if err := auction.EndAuction(caller); err != nil {
+		panic(err.Error())
+	}
 	return "Auction ended successfully"
 }
 
@@ -63,17 +68,17 @@ func Render(path string) string {
 
 // renderHomepage renders the homepage with links to different sections
 func renderHomepage(res *mux.ResponseWriter, req *mux.Request) {
-	var b strings.Builder
+	var b bytes.Buffer
 	b.WriteString("<h1><center>Auction Home</center></h1>\n\n")
-	b.WriteString("<h2><a href='/create'>Create New Auction</a></h2>\n\n")
-	b.WriteString("<h2><a href='/upcoming'>Upcoming Auctions</a></h2>\n\n")
-	b.WriteString("<h2><a href='/ongoing'>Ongoing Auctions</a></h2>\n\n")
+	b.WriteString("<h2><a href='/r/demo/auction:create'>Create New Auction</a></h2>\n\n")
+	b.WriteString("<h2><a href='/r/demo/auction:upcoming'>Upcoming Auctions</a></h2>\n\n")
+	b.WriteString("<h2><a href='/r/demo/auction:ongoing'>Ongoing Auctions</a></h2>\n\n")
 	res.Write(b.String())
 }
 
 // renderCreateAuction renders the create auction page
 func renderCreateAuction(res *mux.ResponseWriter, req *mux.Request) {
-	var b strings.Builder
+	var b bytes.Buffer
 	b.WriteString("<h1>Create New Auction</h1>\n")
 	b.WriteString("<form action='/create' method='post'>\n")
 	b.WriteString("Title: <input type='text' name='title'><br>\n")
@@ -88,14 +93,9 @@ func renderCreateAuction(res *mux.ResponseWriter, req *mux.Request) {
 
 // renderUpcomingAuctions renders the upcoming auctions page
 func renderUpcomingAuctions(res *mux.ResponseWriter, req *mux.Request) {
-	var b strings.Builder
+	var b bytes.Buffer
 	b.WriteString("<h1>Upcoming Auctions</h1>\n")
 
-	if len(auctionList) == 0 {
-		b.WriteString("## No upcoming auctions available\n")
-		res.Write(b.String())
-		return
-	}
 	for i, auc := range auctionList {
 		if auc.State == "upcoming" {
 			b.WriteString("## " + auc.Title + "\n")
@@ -111,7 +111,7 @@ func renderUpcomingAuctions(res *mux.ResponseWriter, req *mux.Request) {
 
 // renderOngoingAuctions renders the ongoing auctions page
 func renderOngoingAuctions(res *mux.ResponseWriter, req *mux.Request) {
-	var b strings.Builder
+	var b bytes.Buffer
 	b.WriteString("<h1>Ongoing Auctions</h1>\n")
 
 	for i, auc := range auctionList {
@@ -137,7 +137,7 @@ func renderAuctionDetails(res *mux.ResponseWriter, req *mux.Request) {
 	}
 	auc := auctionList[id]
 
-	var b strings.Builder
+	var b bytes.Buffer
 	b.WriteString("<h1>Auction Details</h1>\n")
 	b.WriteString("## " + auc.Title + "\n")
 	b.WriteString("### Owner: " + auc.Owner.String() + "\n")

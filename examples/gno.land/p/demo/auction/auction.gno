@@ -4,6 +4,8 @@ import (
 	"std"
 	"strconv"
 	"time"
+
+	"gno.land/p/demo/ufmt"
 )
 
 // Auction struct
@@ -51,20 +53,21 @@ func NewAuction(
 }
 
 // AddBid adds a new bid to the auction
-func (a *Auction) AddBid(bidder std.Address, amount uint64) {
+func (a *Auction) AddBid(bidder std.Address, amount uint64) error {
 	if now().Before(a.Begin) {
-		panic("Auction has not started yet")
+		return ufmt.Errorf("auction: AddBid: auction has not started yet")
 	}
 	if now().After(a.End) {
-		panic("Auction has already ended")
+		return ufmt.Errorf("auction: AddBid: auction has already ended")
 	}
 	if amount <= a.Price {
-		panic("Bid amount must be higher than the current highest bid")
+		return ufmt.Errorf("auction: AddBid: bid amount must be higher than the current highest bid")
 	}
 	bid := &Bid{Bidder: bidder, Amount: amount}
 	a.Bids = append(a.Bids, bid)
 	a.Price = amount
 	std.Emit("BidPlaced", "auction", a.Title, "bidder", bidder.String(), "amount", strconv.FormatUint(amount, 10))
+	return nil
 }
 
 // IsOwnedBy checks if the given address is the owner of the auction
@@ -73,24 +76,25 @@ func (a *Auction) IsOwnedBy(address std.Address) bool {
 }
 
 // EndAuction ends the auction
-func (a *Auction) EndAuction(caller std.Address) {
+func (a *Auction) EndAuction(caller std.Address) error {
 	if caller != a.Owner {
-		panic("Only the owner can end the auction")
+		return ufmt.Errorf("auction: EndAuction: only the owner can end the auction")
 	}
 	if now().Before(a.End) {
-		panic("Auction cannot end before the end time")
+		return ufmt.Errorf("auction: EndAuction: auction cannot end before the end time")
 	}
 	if a.State == "closed" {
-		panic("Auction is already closed")
+		return ufmt.Errorf("auction: EndAuction: auction is already closed")
 	}
-	a.State = "closed"
 	if len(a.Bids) == 0 {
 		std.Emit("AuctionEndedNoBids", "auction", a.Title)
-		return
+		return ufmt.Errorf("auction: EndAuction: auction ended with no bids")
 	}
+	a.State = "closed"
 	highestBid := a.Price
 	winner := a.Bids[len(a.Bids)-1].Bidder
 	std.Emit("AuctionEnded", "winner", winner.String(), "amount", strconv.FormatUint(highestBid, 10))
+	return nil
 }
 
 // SetCurrentTime sets the current time for testing purposes

@@ -56,20 +56,21 @@ func TestAddBid(t *testing.T) {
 	auction := NewAuction("Test Auction", owner, "This is a test auction", begin, end, minPrice)
 
 	// Test before auction starts
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic when bidding before auction starts")
-		}
-	}()
 	setCurrentTime(time.Now())
-	auction.AddBid(bidder1, 200)
+	err := auction.AddBid(bidder1, 200)
+	if err == nil || err.Error() != "auction: AddBid: auction has not started yet" {
+		t.Fatalf("expected error 'auction has not started yet', got '%v'", err)
+	}
 	resetCurrentTime()
 
 	// Test successful bid
 	setCurrentTime(begin.Add(1 * time.Second))
-	auction.AddBid(bidder1, 200)
+	err = auction.AddBid(bidder1, 200)
 	resetCurrentTime()
 
+	if err != nil {
+		t.Fatalf("expected no error, got '%v'", err)
+	}
 	if auction.Price != 200 {
 		t.Fatalf("expected auction price to be '200', got '%d'", auction.Price)
 	}
@@ -82,9 +83,12 @@ func TestAddBid(t *testing.T) {
 
 	// Test higher bid
 	setCurrentTime(begin.Add(2 * time.Second))
-	auction.AddBid(bidder2, 300)
+	err = auction.AddBid(bidder2, 300)
 	resetCurrentTime()
 
+	if err != nil {
+		t.Fatalf("expected no error, got '%v'", err)
+	}
 	if auction.Price != 300 {
 		t.Fatalf("expected auction price to be '300', got '%d'", auction.Price)
 	}
@@ -96,14 +100,12 @@ func TestAddBid(t *testing.T) {
 	}
 
 	// Test bid lower than current price
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic when bidding with lower amount than current price")
-		}
-	}()
 	setCurrentTime(begin.Add(3 * time.Second))
-	auction.AddBid(bidder1, 250)
+	err = auction.AddBid(bidder1, 250)
 	resetCurrentTime()
+	if err == nil || err.Error() != "auction: AddBid: bid amount must be higher than the current highest bid" {
+		t.Fatalf("expected error 'bid amount must be higher than the current highest bid', got '%v'", err)
+	}
 }
 
 func TestEndAuction(t *testing.T) {
@@ -116,32 +118,31 @@ func TestEndAuction(t *testing.T) {
 	auction := NewAuction("Test Auction", owner, "This is a test auction", begin, end, minPrice)
 
 	// Test ending auction before it starts
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic when ending auction before it starts")
-		}
-	}()
 	setCurrentTime(begin.Add(-1 * time.Hour))
-	auction.EndAuction(owner)
+	err := auction.EndAuction(owner)
+	if err == nil || err.Error() != "auction: EndAuction: auction cannot end before the end time" {
+		t.Fatalf("expected error 'auction cannot end before the end time', got '%v'", err)
+	}
 	resetCurrentTime()
 
 	// Test ending auction with no bids
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic when ending auction with no bids")
-		}
-	}()
 	setCurrentTime(end.Add(1 * time.Second))
-	auction.EndAuction(owner)
+	err = auction.EndAuction(owner)
+	if err == nil || err.Error() != "auction: EndAuction: auction ended with no bids" {
+		t.Fatalf("expected error 'auction ended with no bids', got '%v'", err)
+	}
 	resetCurrentTime()
 
 	// Place a bid and end auction
 	setCurrentTime(begin.Add(1 * time.Second))
 	auction.AddBid(bidder, 200)
 	setCurrentTime(end.Add(1 * time.Second))
-	auction.EndAuction(owner)
+	err = auction.EndAuction(owner)
 	resetCurrentTime()
 
+	if err != nil {
+		t.Fatalf("expected no error, got '%v'", err)
+	}
 	if auction.State != "closed" {
 		t.Fatalf("expected auction state to be 'closed', got '%s'", auction.State)
 	}
