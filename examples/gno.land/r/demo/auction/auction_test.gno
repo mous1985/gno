@@ -16,8 +16,8 @@ func TestAuction(t *testing.T) {
 	std.TestSetOrigCaller(adminAddr)
 
 	// Create an auction that starts almost immediately
-	begin := time.Now().Add(1 * time.Second).Unix() // Auction begins in 1 second
-	end := time.Now().Add(24 * time.Hour).Unix()    // Auction ends in 24 hours
+	begin := time.Now().Add(300 * time.Second).Unix() // Auction begins in 1 second
+	end := time.Now().Add(24 * time.Hour).Unix()      // Auction ends in 24 hours
 	CreateAuction("Test Auction", "A simple test auction", begin, end, 100)
 
 	// Check if auction is in the upcoming section

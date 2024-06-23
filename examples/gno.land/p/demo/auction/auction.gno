@@ -4,8 +4,6 @@ import (
 	"std"
 	"strconv"
 	"time"
-
-	"gno.land/p/demo/mux"
 )
 
 // Auction struct
