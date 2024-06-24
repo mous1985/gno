@@ -17,7 +17,6 @@ func resetCurrentTime() {
 
 func TestAuction(t *testing.T) {
 	// Initialize the router and handlers
-	init()
 
 	// Simulate the admin creating an auction
 	adminAddr := std.Address("admin")
