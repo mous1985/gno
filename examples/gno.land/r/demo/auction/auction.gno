@@ -13,15 +13,16 @@ import (
 var (
 	auctionList []*auctionp.Auction
 	currentTime time.Time
-	router      *mux.Router
+	// router      *mux.Router
 )
 
+var router = mux.NewRouter()
+
 func init() {
-	router = mux.NewRouter()
 	router.HandleFunc("", renderHomepage)
-	router.HandleFunc("/create", renderCreateAuction)
-	router.HandleFunc("/upcoming", renderUpcomingAuctions)
-	router.HandleFunc("/ongoing", renderOngoingAuctions)
+	router.HandleFunc("create/", renderCreateAuction)
+	router.HandleFunc("upcoming/", renderUpcomingAuctions)
+	router.HandleFunc("ongoing/", renderOngoingAuctions)
 	router.HandleFunc("/auction/{id}", renderAuctionDetails)
 }
 
@@ -70,15 +71,17 @@ func Render(path string) string {
 func renderHomepage(res *mux.ResponseWriter, req *mux.Request) {
 	var b bytes.Buffer
 	b.WriteString("<h1><center>Auction Home</center></h1>\n\n")
-	b.WriteString("<h2><a href='/r/demo/auction:create'>Create New Auction</a></h2>\n\n")
-	b.WriteString("<h2><a href='/r/demo/auction:upcoming'>Upcoming Auctions</a></h2>\n\n")
-	b.WriteString("<h2><a href='/r/demo/auction:ongoing'>Ongoing Auctions</a></h2>\n\n")
+	b.WriteString("<h2><a href='/r/demo/auction:create/'>Create New Auction</a></h2>\n\n")
+	b.WriteString("<h2><a href='/r/demo/auction:upcoming/'>Upcoming Auctions</a></h2>\n\n")
+	b.WriteString("<h2><a href='/r/demo/auction:ongoing/'>Ongoing Auctions</a></h2>\n\n")
 	res.Write(b.String())
 }
 
 // renderCreateAuction renders the create auction page
 func renderCreateAuction(res *mux.ResponseWriter, req *mux.Request) {
 	var b bytes.Buffer
+	b.WriteString("<html><body>")
+
 	b.WriteString("<h1>Create New Auction</h1>\n")
 	b.WriteString("<form action='/create' method='post'>\n")
 	b.WriteString("Title: <input type='text' name='title'><br>\n")
@@ -88,6 +91,7 @@ func renderCreateAuction(res *mux.ResponseWriter, req *mux.Request) {
 	b.WriteString("Starting Price: <input type='number' name='price'><br>\n")
 	b.WriteString("<input type='submit' value='Create Auction'>\n")
 	b.WriteString("</form>\n")
+	b.WriteString("</body></html>")
 	res.Write(b.String())
 }
 
