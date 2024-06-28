@@ -102,7 +102,9 @@ func renderUpcomingAuctions(res *mux.ResponseWriter, req *mux.Request) {
 
 	for i, auc := range auctionList {
 		if auc.State == "upcoming" {
-			b.WriteString("## " + auc.Title + "\n")
+			b.WriteString("\n\n")
+			b.WriteString("## " + auc.Title)
+			b.WriteString("\n\n")
 			b.WriteString("### Owner: " + auc.Owner.String() + "\n")
 			b.WriteString("### Description: " + auc.Description + "\n\n")
 			b.WriteString("This auction starts on: " + auc.Begin.String() + " and ends on: " + auc.End.String() + "\n\n")
@@ -120,7 +122,7 @@ func renderOngoingAuctions(res *mux.ResponseWriter, req *mux.Request) {
 
 	for i, auc := range auctionList {
 		if auc.State == "ongoing" {
-			b.WriteString("## " + auc.Title + "\n")
+			b.WriteString("##" + auc.Title + "\n")
 			b.WriteString("### Owner: " + auc.Owner.String() + "\n")
 			b.WriteString("### Description: " + auc.Description + "\n\n")
 			b.WriteString("This auction started on: " + auc.Begin.String() + " and ends on: " + auc.End.String() + "\n\n")
