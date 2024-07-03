@@ -82,7 +82,7 @@ func renderCreateAuction(res *mux.ResponseWriter, req *mux.Request) {
 	var b bytes.Buffer
 	b.WriteString("<html><body>")
 
-	b.WriteString("<h1>Create New Auction</h1>\n")
+	b.WriteString("#Create New Auction\n")
 	b.WriteString("<form action='/create' method='post'>\n")
 	b.WriteString("Title: <input type='text' name='title'><br>\n")
 	b.WriteString("Description: <input type='text' name='description'><br>\n")
@@ -160,16 +160,4 @@ func renderAuctionDetails(res *mux.ResponseWriter, req *mux.Request) {
 	}
 
 	res.Write(b.String())
-}
-
-// Update the auction states based on the current time
-func updateAuctionStates() {
-	now := time.Now()
-	for _, auc := range auctionList {
-		if auc.State == "upcoming" && now.After(auc.Begin) {
-			auc.State = "ongoing"
-		} else if auc.State == "ongoing" && now.After(auc.End) {
-			auc.State = "closed"
-		}
-	}
 }

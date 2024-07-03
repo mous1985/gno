@@ -77,3 +77,16 @@ func TestAuction(t *testing.T) {
 
 	resetCurrentTime()
 }
+
+// Update the auction states based on the current time
+
+func updateAuctionStates() {
+	now := time.Now()
+	for _, auc := range auctionList {
+		if auc.State == "upcoming" && now.After(auc.Begin) {
+			auc.State = "ongoing"
+		} else if auc.State == "ongoing" && now.After(auc.End) {
+			auc.State = "closed"
+		}
+	}
+}
