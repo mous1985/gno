@@ -4,6 +4,8 @@ import (
 	"std"
 	"strconv"
 	"time"
+
+	"gno.land/p/demo/ufmt"
 )
 
 // Auction struct
@@ -11,11 +13,11 @@ type Auction struct {
 	Title       string
 	Owner       std.Address
 	Description string
-	begin       time.Time
-	end         time.Time
-	price       uint64
-	bids        []*Bid
-	State       string // "open" or "closed"
+	Begin       time.Time
+	End         time.Time
+	Price       uint64
+	Bids        []*Bid
+	State       string // "upcoming", "ongoing", or "closed"
 }
 
 // Bid struct
@@ -39,44 +41,12 @@ func NewAuction(
 		Title:       title,
 		Description: description,
 		Owner:       owner,
-		begin:       begin,
-		end:         end,
-		price:       minPrice,
-		bids:        []*Bid{},
-		State:       "open",
+		Begin:       begin,
+		End:         end,
+		Price:       minPrice,
+		Bids:        []*Bid{},
+		State:       "upcoming",
 	}
-}
-
-// Getter methods for private fields
-func (a *Auction) GetBegin() time.Time {
-	return a.begin
-}
-
-func (a *Auction) GetEnd() time.Time {
-	return a.end
-}
-
-func (a *Auction) GetPrice() uint64 {
-	return a.price
-}
-
-func (a *Auction) GetBids() []*Bid {
-	return a.bids
-}
-
-// Setter methods for the owner to modify fields
-func (a *Auction) SetTitle(caller std.Address, title string) {
-	if caller != a.Owner {
-		panic("Only the owner can modify the title")
-	}
-	a.Title = title
-}
-
-func (a *Auction) SetDescription(caller std.Address, description string) {
-	if caller != a.Owner {
-		panic("Only the owner can modify the description")
-	}
-	a.Description = description
 }
 
 // AddBid adds a new bid to the auction
