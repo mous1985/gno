@@ -13,16 +13,16 @@ type DOM struct {
 
 
 // Function to render the DOM structure into a buffer
-func (dom DOM) Render() string {
-    buf := getBuffer()
+func (dom DOM) Render(ctx *Context)  {
+    
     // Generate the page layout with the title and content
-    PageLayout(dom.Title, dom.Content)
+    ctx.PageLayout(dom.Title, dom.Content)
     
     // If a custom footer is provided, render it as well
     if dom.Footer != "" {
-        P(dom.Footer) 
+        ctx.P(dom.Footer) 
     }
-    return buf.String()
+    
 }
 
 // Function to update the content of the DOM
