@@ -866,7 +866,7 @@ func gno2GoType(t Type) reflect.Type {
 			return rt
 		} else {
 			// NOTE: can this be implemented in go1.15? i think not.
-			panic("not yet supported")
+			panic("gno2go conversion of type not yet supported: " + ct.String())
 		}
 	case *TypeType:
 		panic("should not happen")
@@ -890,7 +890,7 @@ func gno2GoType(t Type) reflect.Type {
 
 // If gno2GoTypeMatches(t, rt) is true, a t value can
 // be converted to an rt native value using gno2GoValue(v, rv).
-// This is called when autoNative is true in checkType().
+// This is called when autoNative is true in assertAssignableTo().
 // This is used for all native function calls, and also
 // for testing whether a native value implements a gno interface.
 func gno2GoTypeMatches(t Type, rt reflect.Type) (result bool) {
