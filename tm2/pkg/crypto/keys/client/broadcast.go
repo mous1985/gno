@@ -89,10 +89,7 @@ func execBroadcast(cfg *BroadcastCfg, args []string, io commands.IO) error {
 		io.Println("GAS USED:  ", res.DeliverTx.GasUsed)
 		io.Println("HEIGHT:    ", res.Height)
 		io.Println("EVENTS:    ", string(res.DeliverTx.EncodeEvents()))
-<<<<<<< HEAD
-=======
 		io.Println("TX HASH:   ", base64.StdEncoding.EncodeToString(res.Hash))
->>>>>>> 6f91a35f3fcb0da593a8b45f6b19d70865406e05
 	}
 	return nil
 }
