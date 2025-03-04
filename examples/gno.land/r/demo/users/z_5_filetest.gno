@@ -1,6 +1,6 @@
 package main
 
-// SEND: 2000000000ugnot
+// SEND: 200000000ugnot
 
 import (
 	"std"
@@ -9,24 +9,29 @@ import (
 	"gno.land/r/demo/users"
 )
 
-const admin = std.Address("g1us8428u2a5satrlxzagqqa5m6vmuze025anjlj")
+const admin = std.Address("g1manfred47kzduec920z88wfr64ylksmdcedlf5")
 
 func main() {
-	caller := std.GetOrigCaller() // main
+	caller := std.OriginCaller() // main
 	users.Register("", "gnouser", "my profile")
 	// as admin, grant invites to gnouser
-	std.TestSetOrigCaller(admin)
+	std.TestSetOriginCaller(admin)
+	std.TestSetRealm(std.NewUserRealm(admin))
 	users.GrantInvites(caller.String() + ":1")
 	// switch back to caller
-	std.TestSetOrigCaller(caller)
+	std.TestSetOriginCaller(caller)
+	std.TestSetRealm(std.NewUserRealm(caller))
 	// invite another addr
 	test1 := testutils.TestAddress("test1")
 	users.Invite(test1.String())
 	// switch to test1
-	std.TestSetOrigCaller(test1)
-	std.TestSetOrigSend(std.Coins{{"dontcare", 1}}, nil)
+	std.TestSetOriginCaller(test1)
+	std.TestSetRealm(std.NewUserRealm(test1))
+	std.TestSetOriginSend(std.Coins{{"dontcare", 1}}, nil)
 	users.Register(caller, "satoshi", "my other profile")
 	println(users.Render(""))
+	println("========================================")
+	println(users.Render("?page=2"))
 	println("========================================")
 	println(users.Render("gnouser"))
 	println("========================================")
@@ -36,8 +41,22 @@ func main() {
 }
 
 // Output:
-// * [gnouser](/r/demo/users:gnouser)
+//  * [archives](/r/demo/users:archives)
+//  * [demo](/r/demo/users:demo)
+//  * [gno](/r/demo/users:gno)
+//  * [gnoland](/r/demo/users:gnoland)
+//  * [gnolang](/r/demo/users:gnolang)
+//  * [gnouser](/r/demo/users:gnouser)
+//  * [gov](/r/demo/users:gov)
+//  * [nt](/r/demo/users:nt)
 //  * [satoshi](/r/demo/users:satoshi)
+//  * [sys](/r/demo/users:sys)
+//  * [test1](/r/demo/users:test1)
+//  * [x](/r/demo/users:x)
+//
+//
+// ========================================
+//
 //
 // ========================================
 // ## user gnouser

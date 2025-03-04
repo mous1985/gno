@@ -8,14 +8,14 @@ import (
 var aset *std.AddressList
 
 func init() {
-	caller := std.GetOrigCaller()
+	caller := std.OriginCaller()
 	aset = std.NewAddressList()
 	aset.AddAddress(caller)
 }
 
 func main() {
 	println(*aset)
-	caller := std.GetOrigCaller()
+	caller := std.OriginCaller()
 	err := aset.AddAddress(caller)
 	println("error:", err)
 	has := aset.HasAddress(caller)
@@ -25,7 +25,7 @@ func main() {
 }
 
 // Output:
-// (slice[ref(1ed29bd278d735e20e296bd4afe927501941392f:4)] std.AddressList)
+// (slice[ref(1ed29bd278d735e20e296bd4afe927501941392f:5)] std.AddressList)
 // error: address already exists
 // has: true
 // has: false

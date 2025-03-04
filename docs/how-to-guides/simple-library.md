@@ -34,7 +34,7 @@ and [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=har
 :::
 
 We discussed Gno folder structures more in detail in
-the [simple Smart Contract guide](simple-contract.md#1-setting-up-the-work-directory).
+the [simple Smart Contract guide](simple-contract.md#local-setup).
 For now, we will just follow some rules outlined there.
 
 Create the main working directory for our Package:
@@ -127,10 +127,10 @@ var listOfTapas = []string{
 // GetTapaSuggestion randomly selects and returns a tapa suggestion
 func GetTapaSuggestion(userInput string) string {
 
-	// Create a pseudorandom number depending on the block height.
-	// We get the block height using std.GetHeight(), which is from an imported Gno library, "std"
+	// Create a random number depending on the block height.
+	// We get the block height using std.ChainHeight(), which is from an imported Gno library, "std"
 	// Note: this value is not fully random and is easily guessable
-	randomNumber := int(std.GetHeight()) % len(listOfTapas)
+	randomNumber := int(std.ChainHeight()) % len(listOfTapas)
 
 	// Return the random suggestion
 	return listOfTapas[randomNumber]

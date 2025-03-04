@@ -1,10 +1,8 @@
 package main
 
 import (
-	"std"
+	"os_test"
 	"time"
-
-	"internal/os_test"
 
 	"gno.land/p/demo/tamagotchi"
 )
@@ -45,6 +43,7 @@ func main() {
 }
 
 // Output:
+//
 // -- INITIAL
 //
 // # Gnome 😃

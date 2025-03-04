@@ -25,7 +25,7 @@ const (
 	// Can only read state.
 	btReadonly uint8 = iota //nolint
 	// Can only send from tx send.
-	btOrigSend
+	btOriginSend
 	// Can send from all realm coins.
 	btRealmSend
 	// Can issue and remove realm coins.
@@ -33,48 +33,31 @@ const (
 )
 
 func X_bankerGetCoins(m *gno.Machine, bt uint8, addr string) (denoms []string, amounts []int64) {
-	coins := m.Context.(ExecContext).Banker.GetCoins(crypto.Bech32Address(addr))
+	coins := GetContext(m).Banker.GetCoins(crypto.Bech32Address(addr))
 	return ExpandCoins(coins)
 }
 
 func X_bankerSendCoins(m *gno.Machine, bt uint8, fromS, toS string, denoms []string, amounts []int64) {
 	// bt != BankerTypeReadonly (checked in gno)
 
-	ctx := m.Context.(ExecContext)
+	ctx := GetContext(m)
 	amt := CompactCoins(denoms, amounts)
 	from, to := crypto.Bech32Address(fromS), crypto.Bech32Address(toS)
 
-	pkgAddr := ctx.OrigPkgAddr
-	if m.Realm != nil {
-		pkgPath := m.Realm.Path
-		pkgAddr = gno.DerivePkgAddr(pkgPath).Bech32()
-	}
-
-	if bt == btOrigSend || bt == btRealmSend {
-		if from != pkgAddr {
-			m.Panic(typedString(
-				fmt.Sprintf(
-					"can only send from the realm package address %q, but got %q",
-					pkgAddr, from),
-			))
-			return
-		}
-	}
-
 	switch bt {
-	case btOrigSend:
+	case btOriginSend:
 		// indirection allows us to "commit" in a second phase
-		spent := (*ctx.OrigSendSpent).Add(amt)
-		if !ctx.OrigSend.IsAllGTE(spent) {
+		spent := (*ctx.OriginSendSpent).Add(amt)
+		if !ctx.OriginSend.IsAllGTE(spent) {
 			m.Panic(typedString(
 				fmt.Sprintf(
 					`cannot send "%v", limit "%v" exceeded with "%v" already spent`,
-					amt, ctx.OrigSend, *ctx.OrigSendSpent),
+					amt, ctx.OriginSend, *ctx.OriginSendSpent),
 			))
 			return
 		}
 		ctx.Banker.SendCoins(from, to, amt)
-		*ctx.OrigSendSpent = spent
+		*ctx.OriginSendSpent = spent
 	case btRealmSend, btRealmIssue:
 		ctx.Banker.SendCoins(from, to, amt)
 	default:
@@ -83,15 +66,13 @@ func X_bankerSendCoins(m *gno.Machine, bt uint8, fromS, toS string, denoms []str
 }
 
 func X_bankerTotalCoin(m *gno.Machine, bt uint8, denom string) int64 {
-	return m.Context.(ExecContext).Banker.TotalCoin(denom)
+	return GetContext(m).Banker.TotalCoin(denom)
 }
 
 func X_bankerIssueCoin(m *gno.Machine, bt uint8, addr string, denom string, amount int64) {
-	// gno checks for bt == RealmIssue
-	m.Context.(ExecContext).Banker.IssueCoin(crypto.Bech32Address(addr), denom, amount)
+	GetContext(m).Banker.IssueCoin(crypto.Bech32Address(addr), denom, amount)
 }
 
 func X_bankerRemoveCoin(m *gno.Machine, bt uint8, addr string, denom string, amount int64) {
-	// gno checks for bt == RealmIssue
-	m.Context.(ExecContext).Banker.IssueCoin(crypto.Bech32Address(addr), denom, amount)
+	GetContext(m).Banker.RemoveCoin(crypto.Bech32Address(addr), denom, amount)
 }

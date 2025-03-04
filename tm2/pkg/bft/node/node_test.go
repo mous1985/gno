@@ -25,8 +25,6 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/db/memdb"
 	"github.com/gnolang/gno/tm2/pkg/events"
 	"github.com/gnolang/gno/tm2/pkg/log"
-	"github.com/gnolang/gno/tm2/pkg/p2p"
-	p2pmock "github.com/gnolang/gno/tm2/pkg/p2p/mock"
 	"github.com/gnolang/gno/tm2/pkg/random"
 )
 
@@ -35,12 +33,10 @@ func TestNodeStartStop(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
-	n, err := DefaultNewNode(config, genesisFile, log.NewNoopLogger())
+	n, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewNoopLogger())
 	require.NoError(t, err)
 	err = n.Start()
 	require.NoError(t, err)
-
-	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
 	blocksSub := events.SubscribeToEvent(n.EventSwitch(), "node_test", types.EventNewBlock{})
@@ -98,7 +94,7 @@ func TestNodeDelayedStart(t *testing.T) {
 	now := tmtime.Now()
 
 	// create & start node
-	n, err := DefaultNewNode(config, genesisFile, log.NewTestingLogger(t))
+	n, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewTestingLogger(t))
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 	require.NoError(t, err)
 
@@ -115,7 +111,7 @@ func TestNodeReady(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// Create & start node
-	n, err := DefaultNewNode(config, genesisFile, log.NewTestingLogger(t))
+	n, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewTestingLogger(t))
 	require.NoError(t, err)
 
 	// Assert that blockstore has zero block before waiting for the first block
@@ -148,7 +144,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
-	n, err := DefaultNewNode(config, genesisFile, log.NewTestingLogger(t))
+	n, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewTestingLogger(t))
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
@@ -192,7 +188,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop()
 
-	n, err := DefaultNewNode(config, genesisFile, log.NewTestingLogger(t))
+	n, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewTestingLogger(t))
 	require.NoError(t, err)
 	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
 }
@@ -205,7 +201,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
-	_, err := DefaultNewNode(config, genesisFile, log.NewTestingLogger(t))
+	_, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewTestingLogger(t))
 	assert.Error(t, err)
 }
 
@@ -236,7 +232,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	}()
 	defer pvsc.Stop()
 
-	n, err := DefaultNewNode(config, genesisFile, log.NewTestingLogger(t))
+	n, err := DefaultNewNode(config, genesisFile, events.NewEventSwitch(), log.NewTestingLogger(t))
 	require.NoError(t, err)
 	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
 }
@@ -304,40 +300,8 @@ func TestCreateProposalBlock(t *testing.T) {
 		proposerAddr,
 	)
 
-	err = blockExec.ValidateBlock(state, block)
+	err = state.ValidateBlock(block)
 	assert.NoError(t, err)
-}
-
-func TestNodeNewNodeCustomReactors(t *testing.T) {
-	config, genesisFile := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
-	defer os.RemoveAll(config.RootDir)
-
-	cr := p2pmock.NewReactor()
-	customBlockchainReactor := p2pmock.NewReactor()
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-	require.NoError(t, err)
-
-	n, err := NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
-		nodeKey,
-		proxy.DefaultClientCreator(nil, config.ProxyApp, config.ABCI, config.DBDir()),
-		DefaultGenesisDocProviderFunc(genesisFile),
-		DefaultDBProvider,
-		log.NewTestingLogger(t),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
-	)
-	require.NoError(t, err)
-
-	err = n.Start()
-	require.NoError(t, err)
-	defer n.Stop()
-
-	assert.True(t, cr.IsRunning())
-	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
-
-	assert.True(t, customBlockchainReactor.IsRunning())
-	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB) {

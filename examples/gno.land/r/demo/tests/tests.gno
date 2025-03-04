@@ -3,6 +3,7 @@ package tests
 import (
 	"std"
 
+	"gno.land/p/demo/nestedpkg"
 	rsubtests "gno.land/r/demo/tests/subtests"
 )
 
@@ -17,21 +18,29 @@ func Counter() int {
 }
 
 func CurrentRealmPath() string {
-	return std.CurrentRealmPath()
+	return std.CurrentRealm().PkgPath()
 }
 
-var initOrigCaller = std.GetOrigCaller()
+var initOriginCaller = std.OriginCaller()
 
-func InitOrigCaller() std.Address {
-	return initOrigCaller
+func InitOriginCaller() std.Address {
+	return initOriginCaller
 }
 
-func AssertOriginCall() {
+func CallAssertOriginCall() {
 	std.AssertOriginCall()
 }
 
-func IsOriginCall() bool {
-	return std.IsOriginCall()
+func CallIsOriginCall() bool {
+	return std.PreviousRealm().IsUser()
+}
+
+func CallSubtestsAssertOriginCall() {
+	rsubtests.CallAssertOriginCall()
+}
+
+func CallSubtestsIsOriginCall() bool {
+	return rsubtests.CallIsOriginCall()
 }
 
 //----------------------------------------
@@ -40,6 +49,8 @@ func IsOriginCall() bool {
 type TestRealmObject struct {
 	Field string
 }
+
+var TestRealmObjectValue TestRealmObject
 
 func ModifyTestRealmObject(t *TestRealmObject) {
 	t.Field += "_modified"
@@ -80,14 +91,26 @@ func PrintTestNodes() {
 	println(gTestNode2.Child.Name)
 }
 
-func GetPrevRealm() std.Realm {
-	return std.PrevRealm()
+func GetPreviousRealm() std.Realm {
+	return std.PreviousRealm()
 }
 
-func GetRSubtestsPrevRealm() std.Realm {
-	return rsubtests.GetPrevRealm()
+func GetRSubtestsPreviousRealm() std.Realm {
+	return rsubtests.GetPreviousRealm()
 }
 
 func Exec(fn func()) {
 	fn()
+}
+
+func IsCallerSubPath() bool {
+	return nestedpkg.IsCallerSubPath()
+}
+
+func IsCallerParentPath() bool {
+	return nestedpkg.IsCallerParentPath()
+}
+
+func HasCallerSameNamespace() bool {
+	return nestedpkg.IsSameNamespace()
 }

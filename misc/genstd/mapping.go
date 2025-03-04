@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/types"
 	"path"
-	"strconv"
 )
 
 const gnoPackagePath = "github.com/gnolang/gno/gnovm/pkg/gnolang"
@@ -36,8 +35,12 @@ func (mt mappingType) GoQualifiedName() string {
 	return types.ExprString(mt.Type)
 }
 
-func (mt mappingType) GnoType() string {
-	return types.ExprString(mt.Type)
+func (mt mappingType) GnoTypeExpression() string {
+	s := types.ExprString(mt.Type)
+	if s == "interface{}" {
+		return "gno.AnyT()"
+	}
+	return fmt.Sprintf("gno.X(%q)", s)
 }
 
 func linkFunctions(pkgs []*pkgData) []mapping {
@@ -248,10 +251,7 @@ func (m *mapping) typesEqual(gnoe, goe ast.Expr) error {
 // returns full import path from package ident
 func resolveImport(imports []*ast.ImportSpec, ident string) string {
 	for _, i := range imports {
-		s, err := strconv.Unquote(i.Path.Value)
-		if err != nil {
-			panic(fmt.Errorf("could not unquote import path literal: %s", i.Path.Value))
-		}
+		s := mustUnquote(i.Path.Value)
 
 		// TODO: for simplicity, if i.Name is nil we assume the name to be ==
 		// to the last part of the import path.

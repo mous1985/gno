@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/gnolang/gno/gnovm/pkg/version"
 	"github.com/gnolang/gno/tm2/pkg/commands"
 )
 
@@ -23,8 +24,10 @@ Describe your issue in as much detail as possible here
 
 ### Your environment
 
-* go version {{.GoVersion}} {{.Os}}/{{.Arch}}
-* gno commit that causes this issue: {{.Commit}}
+* Gno version: {{ .GnoVersion }}
+* Go version: {{ .GoVersion }}
+* OS and CPU architecture: {{ .Os }}/{{ .Arch }}
+* Gno commit hash causing the issue: {{ .Commit }}
 
 ### Steps to reproduce
 
@@ -60,7 +63,19 @@ func newBugCmd(io commands.IO) *commands.Command {
 		commands.Metadata{
 			Name:       "bug",
 			ShortUsage: "bug",
-			ShortHelp:  "Start a bug report",
+			ShortHelp:  "start a bug report",
+			LongHelp: `opens https://github.com/gnolang/gno/issues in a browser.
+
+The new issue body is prefilled for you with the following information:
+
+- Gno version (the output of "gno version")
+- Go version (example: go1.23.4)
+- OS and CPU architecture (example: linux/amd64)
+- Gno commit hash causing the issue (example: f24690e7ebf325bffcfaf9e328c3df8e6b21e50c)
+
+The rest of the report consists of markdown sections such as ### Steps to reproduce
+that you can edit.
+`,
 		},
 		cfg,
 		func(_ context.Context, args []string) error {
@@ -74,7 +89,7 @@ func (c *bugCfg) RegisterFlags(fs *flag.FlagSet) {
 		&c.skipBrowser,
 		"skip-browser",
 		false,
-		"do not open the browser",
+		"output a prefilled issue template on the cli instead",
 	)
 }
 
@@ -84,10 +99,11 @@ func execBug(cfg *bugCfg, args []string, io commands.IO) error {
 	}
 
 	bugReportEnv := struct {
-		Os, Arch, GoVersion, Commit string
+		Os, Arch, GnoVersion, GoVersion, Commit string
 	}{
 		runtime.GOOS,
 		runtime.GOARCH,
+		version.Version,
 		runtime.Version(),
 		getCommitHash(),
 	}

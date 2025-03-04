@@ -5,20 +5,24 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/gnolang/gno/gnovm/pkg/gnoenv"
 	gno "github.com/gnolang/gno/gnovm/pkg/gnolang"
-	"github.com/gnolang/gno/gnovm/tests"
+	"github.com/gnolang/gno/gnovm/pkg/test"
 	"github.com/gnolang/gno/tm2/pkg/commands"
+	"github.com/gnolang/gno/tm2/pkg/std"
 )
 
 type runCfg struct {
-	verbose bool
-	rootDir string
-	expr    string
+	verbose   bool
+	rootDir   string
+	expr      string
+	debug     bool
+	debugAddr string
 }
 
 func newRunCmd(io commands.IO) *commands.Command {
@@ -28,7 +32,7 @@ func newRunCmd(io commands.IO) *commands.Command {
 		commands.Metadata{
 			Name:       "run",
 			ShortUsage: "run [flags] <file> [<file>...]",
-			ShortHelp:  "runs the specified gno files",
+			ShortHelp:  "run gno packages",
 		},
 		cfg,
 		func(_ context.Context, args []string) error {
@@ -58,6 +62,20 @@ func (c *runCfg) RegisterFlags(fs *flag.FlagSet) {
 		"main()",
 		"value of expression to evaluate. Defaults to executing function main() with no args",
 	)
+
+	fs.BoolVar(
+		&c.debug,
+		"debug",
+		false,
+		"enable interactive debugger using stdin and stdout",
+	)
+
+	fs.StringVar(
+		&c.debugAddr,
+		"debug-addr",
+		"",
+		"enable interactive debugger using tcp address in the form [host]:port",
+	)
 }
 
 func execRun(cfg *runCfg, args []string, io commands.IO) error {
@@ -74,9 +92,9 @@ func execRun(cfg *runCfg, args []string, io commands.IO) error {
 	stderr := io.Err()
 
 	// init store and machine
-	testStore := tests.TestStore(cfg.rootDir,
-		"", stdin, stdout, stderr,
-		tests.ImportModeStdlibsPreferred)
+	_, testStore := test.Store(
+		cfg.rootDir,
+		stdin, stdout, stderr)
 	if cfg.verbose {
 		testStore.SetLogStoreOps(true)
 	}
@@ -86,7 +104,7 @@ func execRun(cfg *runCfg, args []string, io commands.IO) error {
 	}
 
 	// read files
-	files, err := parseFiles(args)
+	files, err := parseFiles(args, stderr)
 	if err != nil {
 		return err
 	}
@@ -95,13 +113,26 @@ func execRun(cfg *runCfg, args []string, io commands.IO) error {
 		return errors.New("no files to run")
 	}
 
+	var send std.Coins
+	pkgPath := string(files[0].PkgName)
+	ctx := test.Context(pkgPath, send)
 	m := gno.NewMachineWithOptions(gno.MachineOptions{
-		PkgPath: string(files[0].PkgName),
+		PkgPath: pkgPath,
 		Output:  stdout,
+		Input:   stdin,
 		Store:   testStore,
+		Context: ctx,
+		Debug:   cfg.debug || cfg.debugAddr != "",
 	})
 
 	defer m.Release()
+
+	// If the debug address is set, the debugger waits for a remote client to connect to it.
+	if cfg.debugAddr != "" {
+		if err := m.Debugger.Serve(cfg.debugAddr); err != nil {
+			return err
+		}
+	}
 
 	// run files
 	m.RunFiles(files...)
@@ -110,15 +141,16 @@ func execRun(cfg *runCfg, args []string, io commands.IO) error {
 	return nil
 }
 
-func parseFiles(fnames []string) ([]*gno.FileNode, error) {
+func parseFiles(fnames []string, stderr io.WriteCloser) ([]*gno.FileNode, error) {
 	files := make([]*gno.FileNode, 0, len(fnames))
+	var hasError bool
 	for _, fname := range fnames {
 		if s, err := os.Stat(fname); err == nil && s.IsDir() {
 			subFns, err := listNonTestFiles(fname)
 			if err != nil {
 				return nil, err
 			}
-			subFiles, err := parseFiles(subFns)
+			subFiles, err := parseFiles(subFns, stderr)
 			if err != nil {
 				return nil, err
 			}
@@ -129,7 +161,14 @@ func parseFiles(fnames []string) ([]*gno.FileNode, error) {
 			// in either case not a file we can parse.
 			return nil, err
 		}
-		files = append(files, gno.MustReadFile(fname))
+
+		hasError = catchRuntimeError(fname, stderr, func() {
+			files = append(files, gno.MustReadFile(fname))
+		})
+	}
+
+	if hasError {
+		return nil, commands.ExitCodeError(1)
 	}
 	return files, nil
 }
@@ -154,8 +193,14 @@ func listNonTestFiles(dir string) ([]string, error) {
 func runExpr(m *gno.Machine, expr string) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("panic running expression %s: %v\n%s\n",
-				expr, r, m.String())
+			switch r := r.(type) {
+			case gno.UnhandledPanicError:
+				fmt.Printf("panic running expression %s: %v\nStacktrace:\n%s\n",
+					expr, r.Error(), m.ExceptionsStacktrace())
+			default:
+				fmt.Printf("panic running expression %s: %v\nMachine State:%s\nStacktrace:\n%s\n",
+					expr, r, m.String(), m.Stacktrace().String())
+			}
 			panic(r)
 		}
 	}()

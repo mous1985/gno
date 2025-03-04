@@ -137,6 +137,7 @@ func ParseFile(filename string, body string) (fn *FileNode, err error) {
 func setLoc(fs *token.FileSet, pos token.Pos, n Node) Node {
 	posn := fs.Position(pos)
 	n.SetLine(posn.Line)
+	n.SetColumn(posn.Column)
 	return n
 }
 
@@ -152,6 +153,13 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 			}
 		}()
 	}
+
+	panicWithPos := func(fmtStr string, args ...any) {
+		pos := fs.Position(gon.Pos())
+		loc := fmt.Sprintf("%s:%d:%d", pos.Filename, pos.Line, pos.Column)
+		panic(fmt.Errorf("%s: %v", loc, fmt.Sprintf(fmtStr, args...)))
+	}
+
 	switch gon := gon.(type) {
 	case *ast.ParenExpr:
 		return toExpr(fs, gon.X)
@@ -228,6 +236,8 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 		}
 	case *ast.FuncLit:
 		type_ := Go2Gno(fs, gon.Type).(*FuncTypeExpr)
+		type_.IsClosure = true
+
 		return &FuncLitExpr{
 			Type: *type_,
 			Body: toBody(fs, gon.Body),
@@ -246,10 +256,10 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 				Tag:  toExpr(fs, gon.Tag),
 			}
 		} else {
-			panic(fmt.Sprintf(
+			panicWithPos(
 				"expected a Go Field with 1 name but got %v.\n"+
 					"maybe call toFields",
-				gon.Names))
+				gon.Names)
 		}
 	case *ast.ArrayType:
 		if _, ok := gon.Len.(*ast.Ellipsis); ok {
@@ -331,7 +341,7 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 		if cx, ok := gon.X.(*ast.CallExpr); ok {
 			if ix, ok := cx.Fun.(*ast.Ident); ok && ix.Name == "panic" {
 				if len(cx.Args) != 1 {
-					panic("expected panic statement to have single exception value")
+					panicWithPos("expected panic statement to have single exception value")
 				}
 				return &PanicStmt{
 					Exception: toExpr(fs, cx.Args[0]),
@@ -413,9 +423,8 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 				VarName:      "",
 			}
 		default:
-			panic(fmt.Sprintf(
-				"unexpected *ast.TypeSwitchStmt.Assign type %s",
-				reflect.TypeOf(gon.Assign).String()))
+			panicWithPos("unexpected *ast.TypeSwitchStmt.Assign type %s",
+				reflect.TypeOf(gon.Assign).String())
 		}
 	case *ast.SwitchStmt:
 		x := toExpr(fs, gon.Tag)
@@ -434,7 +443,10 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 		recv := FieldTypeExpr{}
 		if isMethod {
 			if len(gon.Recv.List) > 1 {
-				panic("*ast.FuncDecl cannot have multiple receivers")
+				panicWithPos("method has multiple receivers")
+			}
+			if len(gon.Recv.List) == 0 {
+				panicWithPos("method has no receiver")
 			}
 			recv = *Go2Gno(fs, gon.Recv.List[0]).(*FieldTypeExpr)
 		}
@@ -452,7 +464,7 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 			Body:     body,
 		}
 	case *ast.GenDecl:
-		panic("unexpected *ast.GenDecl; use toDecls(fs,) instead")
+		panicWithPos("unexpected *ast.GenDecl; use toDecls(fs,) instead")
 	case *ast.File:
 		pkgName := Name(gon.Name.Name)
 		decls := make([]Decl, 0, len(gon.Decls))
@@ -468,12 +480,23 @@ func Go2Gno(fs *token.FileSet, gon ast.Node) (n Node) {
 			PkgName: pkgName,
 			Decls:   decls,
 		}
+	case *ast.EmptyStmt:
+		return &EmptyStmt{}
+	case *ast.IndexListExpr:
+		if len(gon.Indices) > 1 {
+			panicWithPos("invalid operation: more than one index")
+		}
+		panicWithPos("invalid operation: indexList is not permitted in Gno")
+	case *ast.GoStmt:
+		panicWithPos("goroutines are not permitted")
 	default:
-		panic(fmt.Sprintf("unknown Go type %v: %s\n",
+		panicWithPos("unknown Go type %v: %s\n",
 			reflect.TypeOf(gon),
 			spew.Sdump(gon),
-		))
+		)
 	}
+
+	return
 }
 
 //----------------------------------------
@@ -735,11 +758,13 @@ func toDecls(fs *token.FileSet, gd *ast.GenDecl) (ds Decls) {
 			name := toName(s.Name)
 			tipe := toExpr(fs, s.Type)
 			alias := s.Assign != 0
-			ds = append(ds, &TypeDecl{
+			td := &TypeDecl{
 				NameExpr: NameExpr{Name: name},
 				Type:     tipe,
 				IsAlias:  alias,
-			})
+			}
+			setLoc(fs, s.Pos(), td)
+			ds = append(ds, td)
 		case *ast.ValueSpec:
 			if gd.Tok == token.CONST {
 				var names []NameExpr
@@ -748,12 +773,16 @@ func toDecls(fs *token.FileSet, gd *ast.GenDecl) (ds Decls) {
 				for _, id := range s.Names {
 					names = append(names, *Nx(toName(id)))
 				}
-				if s.Type == nil {
+
+				// Inherit the last type when
+				// both type and value are nil
+				if s.Type == nil && s.Values == nil {
 					tipe = lastType
 				} else {
 					tipe = toExpr(fs, s.Type)
 					lastType = tipe
 				}
+
 				if s.Values == nil {
 					values = copyExprs(lastValues)
 				} else {
@@ -767,6 +796,7 @@ func toDecls(fs *token.FileSet, gd *ast.GenDecl) (ds Decls) {
 					Const:     true,
 				}
 				cd.SetAttribute(ATTR_IOTA, si)
+				setLoc(fs, s.Pos(), cd)
 				ds = append(ds, cd)
 			} else {
 				var names []NameExpr
@@ -785,6 +815,7 @@ func toDecls(fs *token.FileSet, gd *ast.GenDecl) (ds Decls) {
 					Values:    values,
 					Const:     false,
 				}
+				setLoc(fs, s.Pos(), vd)
 				ds = append(ds, vd)
 			}
 		case *ast.ImportSpec:
@@ -792,16 +823,19 @@ func toDecls(fs *token.FileSet, gd *ast.GenDecl) (ds Decls) {
 			if err != nil {
 				panic("unexpected import spec path type")
 			}
-			ds = append(ds, &ImportDecl{
+			im := &ImportDecl{
 				NameExpr: *Nx(toName(s.Name)),
 				PkgPath:  path,
-			})
+			}
+			setLoc(fs, s.Pos(), im)
+			ds = append(ds, im)
 		default:
 			panic(fmt.Sprintf(
 				"unexpected decl spec %v",
 				reflect.TypeOf(s)))
 		}
 	}
+
 	return ds
 }
 

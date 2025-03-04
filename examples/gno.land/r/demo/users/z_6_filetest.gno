@@ -3,16 +3,15 @@ package main
 import (
 	"std"
 
-	"gno.land/p/demo/testutils"
 	"gno.land/r/demo/users"
 )
 
-const admin = std.Address("g1us8428u2a5satrlxzagqqa5m6vmuze025anjlj")
+const admin = std.Address("g1manfred47kzduec920z88wfr64ylksmdcedlf5")
 
 func main() {
-	caller := std.GetOrigCaller()
+	caller := std.OriginCaller() // main
 	// as admin, grant invites to unregistered user.
-	std.TestSetOrigCaller(admin)
+	std.TestSetOriginCaller(admin)
 	users.GrantInvites(caller.String() + ":1")
 	println("done")
 }

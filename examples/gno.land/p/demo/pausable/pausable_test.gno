@@ -5,73 +5,49 @@ import (
 	"testing"
 
 	"gno.land/p/demo/ownable"
+	"gno.land/p/demo/uassert"
+	"gno.land/p/demo/urequire"
 )
 
 var (
-	firstCaller  = std.Address("g1l9aypkr8xfvs82zeux486ddzec88ty69lue9de")
-	secondCaller = std.Address("g127jydsh6cms3lrtdenydxsckh23a8d6emqcvfa")
+	firstCaller = std.Address("g1l9aypkr8xfvs82zeux486ddzec88ty69lue9de")
+	o           = ownable.NewWithAddress(firstCaller)
 )
 
-func TestNew(t *testing.T) {
-	std.TestSetOrigCaller(firstCaller)
-
-	result := New()
-
-	if result.paused != false {
-		t.Fatalf("Expected result to be unpaused, got %t\n", result.paused)
-	}
-
-	if result.Owner() != firstCaller {
-		t.Fatalf("Expected %s, got %s\n", firstCaller, result.Owner())
-	}
-}
-
 func TestNewFromOwnable(t *testing.T) {
-	std.TestSetOrigCaller(firstCaller)
-	o := ownable.New()
+	std.TestSetOriginCaller(firstCaller)
 
-	std.TestSetOrigCaller(secondCaller)
 	result := NewFromOwnable(o)
-
-	if result.Owner() != firstCaller {
-		t.Fatalf("Expected %s, got %s\n", firstCaller, result.Owner())
-	}
+	urequire.Equal(t, firstCaller.String(), result.Ownable().Owner().String())
 }
 
 func TestSetUnpaused(t *testing.T) {
-	std.TestSetOrigCaller(firstCaller)
+	std.TestSetOriginCaller(firstCaller)
+	result := NewFromOwnable(o)
 
-	result := New()
 	result.Unpause()
-
-	if result.IsPaused() {
-		t.Fatalf("Expected result to be unpaused, got %t\n", result.IsPaused())
-	}
+	uassert.False(t, result.IsPaused(), "Expected result to be unpaused")
 }
 
 func TestSetPaused(t *testing.T) {
-	std.TestSetOrigCaller(firstCaller)
+	std.TestSetOriginCaller(firstCaller)
+	result := NewFromOwnable(o)
 
-	result := New()
 	result.Pause()
-
-	if !result.IsPaused() {
-		t.Fatalf("Expected result to be paused, got %t\n", result.IsPaused())
-	}
+	uassert.True(t, result.IsPaused(), "Expected result to be paused")
 }
 
 func TestIsPaused(t *testing.T) {
-	std.TestSetOrigCaller(firstCaller)
+	result := NewFromOwnable(o)
+	urequire.False(t, result.IsPaused(), "Expected result to be unpaused")
 
-	result := New()
-
-	if result.IsPaused() {
-		t.Fatalf("Expected result to be unpaused, got %t\n", result.IsPaused())
-	}
-
+	std.TestSetOriginCaller(firstCaller)
 	result.Pause()
+	uassert.True(t, result.IsPaused(), "Expected result to be paused")
+}
 
-	if !result.IsPaused() {
-		t.Fatalf("Expected result to be paused, got %t\n", result.IsPaused())
-	}
+func TestOwnable(t *testing.T) {
+	result := NewFromOwnable(o)
+
+	uassert.Equal(t, result.Ownable().Owner(), o.Owner())
 }

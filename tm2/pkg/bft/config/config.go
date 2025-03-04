@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"time"
 
 	"dario.cat/mergo"
 	abci "github.com/gnolang/gno/tm2/pkg/bft/abci/types"
@@ -16,6 +18,7 @@ import (
 	"github.com/gnolang/gno/tm2/pkg/errors"
 	osm "github.com/gnolang/gno/tm2/pkg/os"
 	p2p "github.com/gnolang/gno/tm2/pkg/p2p/config"
+	sdk "github.com/gnolang/gno/tm2/pkg/sdk/config"
 	telemetry "github.com/gnolang/gno/tm2/pkg/telemetry/config"
 )
 
@@ -47,12 +50,13 @@ type Config struct {
 	BaseConfig `toml:",squash"`
 
 	// Options for services
-	RPC          *rpc.RPCConfig       `toml:"rpc" comment:"##### rpc server configuration options #####"`
-	P2P          *p2p.P2PConfig       `toml:"p2p" comment:"##### peer to peer configuration options #####"`
-	Mempool      *mem.MempoolConfig   `toml:"mempool" comment:"##### mempool configuration options #####"`
-	Consensus    *cns.ConsensusConfig `toml:"consensus" comment:"##### consensus configuration options #####"`
-	TxEventStore *eventstore.Config   `toml:"tx_event_store" comment:"##### event store #####"`
-	Telemetry    *telemetry.Config    `toml:"telemetry" comment:"##### node telemetry #####"`
+	RPC          *rpc.RPCConfig       `json:"rpc" toml:"rpc" comment:"##### rpc server configuration options #####"`
+	P2P          *p2p.P2PConfig       `json:"p2p" toml:"p2p" comment:"##### peer to peer configuration options #####"`
+	Mempool      *mem.MempoolConfig   `json:"mempool" toml:"mempool" comment:"##### mempool configuration options #####"`
+	Consensus    *cns.ConsensusConfig `json:"consensus" toml:"consensus" comment:"##### consensus configuration options #####"`
+	TxEventStore *eventstore.Config   `json:"tx_event_store" toml:"tx_event_store" comment:"##### event store #####"`
+	Telemetry    *telemetry.Config    `json:"telemetry" toml:"telemetry" comment:"##### node telemetry #####"`
+	Application  *sdk.AppConfig       `json:"application" toml:"application" comment:"##### app settings #####"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -65,10 +69,41 @@ func DefaultConfig() *Config {
 		Consensus:    cns.DefaultConsensusConfig(),
 		TxEventStore: eventstore.DefaultEventStoreConfig(),
 		Telemetry:    telemetry.DefaultTelemetryConfig(),
+		Application:  sdk.DefaultAppConfig(),
 	}
 }
 
 type Option func(cfg *Config)
+
+// LoadConfig loads the node configuration from disk
+func LoadConfig(root string) (*Config, error) {
+	// Initialize the config as default
+	var (
+		cfg        = DefaultConfig()
+		configPath = filepath.Join(root, defaultConfigPath)
+	)
+
+	if !osm.FileExists(configPath) {
+		return nil, fmt.Errorf("config file at %q does not exist", configPath)
+	}
+
+	// Load the configuration
+	loadedCfg, loadErr := LoadConfigFile(configPath)
+	if loadErr != nil {
+		return nil, loadErr
+	}
+
+	// Merge the loaded config with the default values.
+	// This is done in case the loaded config is missing values
+	if err := mergo.Merge(loadedCfg, cfg); err != nil {
+		return nil, err
+	}
+
+	// Set the root directory
+	loadedCfg.SetRootDir(root)
+
+	return loadedCfg, nil
+}
 
 // LoadOrMakeConfigWithOptions loads the configuration located in the given
 // root directory, at [defaultConfigFilePath].
@@ -132,16 +167,26 @@ func LoadOrMakeConfigWithOptions(root string, opts ...Option) (*Config, error) {
 	return cfg, nil
 }
 
+// testP2PConfig returns a configuration for testing the peer-to-peer layer
+func testP2PConfig() *p2p.P2PConfig {
+	cfg := p2p.DefaultP2PConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:26656"
+	cfg.FlushThrottleTimeout = 10 * time.Millisecond
+
+	return cfg
+}
+
 // TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
 	return &Config{
 		BaseConfig:   testBaseConfig(),
 		RPC:          rpc.TestRPCConfig(),
-		P2P:          p2p.TestP2PConfig(),
+		P2P:          testP2PConfig(),
 		Mempool:      mem.TestMempoolConfig(),
 		Consensus:    cns.TestConsensusConfig(),
 		TxEventStore: eventstore.DefaultEventStoreConfig(),
-		Telemetry:    telemetry.TestTelemetryConfig(),
+		Telemetry:    telemetry.DefaultTelemetryConfig(),
+		Application:  sdk.DefaultAppConfig(),
 	}
 }
 
@@ -164,11 +209,11 @@ func (cfg *Config) EnsureDirs() error {
 		return fmt.Errorf("no root directory, %w", err)
 	}
 
-	if err := osm.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := osm.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), DefaultDirPerm); err != nil {
 		return fmt.Errorf("no config directory, %w", err)
 	}
 
-	if err := osm.EnsureDir(filepath.Join(rootDir, defaultSecretsDir), DefaultDirPerm); err != nil {
+	if err := osm.EnsureDir(filepath.Join(rootDir, DefaultSecretsDir), DefaultDirPerm); err != nil {
 		return fmt.Errorf("no secrets directory, %w", err)
 	}
 
@@ -197,6 +242,9 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [consensus] section")
 	}
+	if err := cfg.Application.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [application] section")
+	}
 	return nil
 }
 
@@ -204,18 +252,18 @@ func (cfg *Config) ValidateBasic() error {
 
 var (
 	DefaultDBDir      = "db"
-	defaultConfigDir  = "config"
-	defaultSecretsDir = "secrets"
+	DefaultConfigDir  = "config"
+	DefaultSecretsDir = "secrets"
 
-	defaultConfigFileName   = "config.toml"
+	DefaultConfigFileName   = "config.toml"
 	defaultNodeKeyName      = "node_key.json"
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
-	defaultConfigPath       = filepath.Join(defaultConfigDir, defaultConfigFileName)
-	defaultPrivValKeyPath   = filepath.Join(defaultSecretsDir, defaultPrivValKeyName)
-	defaultPrivValStatePath = filepath.Join(defaultSecretsDir, defaultPrivValStateName)
-	defaultNodeKeyPath      = filepath.Join(defaultSecretsDir, defaultNodeKeyName)
+	defaultConfigPath       = filepath.Join(DefaultConfigDir, DefaultConfigFileName)
+	defaultPrivValKeyPath   = filepath.Join(DefaultSecretsDir, defaultPrivValKeyName)
+	defaultPrivValStatePath = filepath.Join(DefaultSecretsDir, defaultPrivValStateName)
+	defaultNodeKeyPath      = filepath.Join(DefaultSecretsDir, defaultNodeKeyName)
 )
 
 // BaseConfig defines the base configuration for a Tendermint node.
@@ -256,19 +304,15 @@ type BaseConfig struct {
 	// and verifying their commits
 	FastSyncMode bool `toml:"fast_sync" comment:"If this node is many blocks behind the tip of the chain, FastSync\n allows them to catchup quickly by downloading blocks in parallel\n and verifying their commits"`
 
-	// Database backend: goleveldb | cleveldb | boltdb
+	// Database backend: goleveldb | boltdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 	//   - pure go
 	//   - stable
-	// * cleveldb (uses levigo wrapper)
-	//   - fast
-	//   - requires gcc
-	//   - use cleveldb build tag (go build -tags cleveldb)
 	// * boltdb (uses etcd's fork of bolt - go.etcd.io/bbolt)
 	//   - EXPERIMENTAL
 	//   - may be faster is some use-cases (random reads - indexer)
 	//   - use boltdb build tag (go build -tags boltdb)
-	DBBackend string `toml:"db_backend" comment:"Database backend: goleveldb | cleveldb | boltdb\n * goleveldb (github.com/syndtr/goleveldb - most popular implementation)\n  - pure go\n  - stable\n * cleveldb (uses levigo wrapper)\n  - fast\n  - requires gcc\n  - use cleveldb build tag (go build -tags cleveldb)\n * boltdb (uses etcd's fork of bolt - go.etcd.io/bbolt)\n  - EXPERIMENTAL\n  - may be faster is some use-cases (random reads - indexer)\n  - use boltdb build tag (go build -tags boltdb)"`
+	DBBackend string `toml:"db_backend" comment:"Database backend: goleveldb | boltdb\n * goleveldb (github.com/syndtr/goleveldb - most popular implementation)\n  - pure go\n  - stable\n* boltdb (uses etcd's fork of bolt - go.etcd.io/bbolt)\n  - EXPERIMENTAL\n  - may be faster is some use-cases (random reads - indexer)\n  - use boltdb build tag (go build -tags boltdb)"`
 
 	// Database directory
 	DBPath string `toml:"db_dir" comment:"Database directory"`
@@ -291,10 +335,6 @@ type BaseConfig struct {
 
 	// TCP or UNIX socket address for the profiling server to listen on
 	ProfListenAddress string `toml:"prof_laddr" comment:"TCP or UNIX socket address for the profiling server to listen on"`
-
-	// If true, query the ABCI app on connecting to a new peer
-	// so the app can decide if we should keep the connection or not
-	FilterPeers bool `toml:"filter_peers" comment:"If true, query the ABCI app on connecting to a new peer\n so the app can decide if we should keep the connection or not"` // false
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -308,7 +348,6 @@ func DefaultBaseConfig() BaseConfig {
 		ABCI:               SocketABCI,
 		ProfListenAddress:  "",
 		FastSyncMode:       true,
-		FilterPeers:        false,
 		DBBackend:          db.GoLevelDBBackend.String(),
 		DBPath:             DefaultDBDir,
 	}
@@ -345,6 +384,10 @@ func (cfg BaseConfig) NodeKeyFile() string {
 
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
+	if filepath.IsAbs(cfg.DBPath) {
+		return cfg.DBPath
+	}
+
 	return filepath.Join(cfg.RootDir, cfg.DBPath)
 }
 
@@ -369,9 +412,10 @@ func (cfg BaseConfig) ValidateBasic() error {
 	}
 
 	// Verify the DB backend
-	if cfg.DBBackend != db.GoLevelDBBackend.String() &&
-		cfg.DBBackend != db.CLevelDBBackend.String() &&
-		cfg.DBBackend != db.BoltDBBackend.String() {
+	// This will reject also any databases that haven't been added with build tags.
+	// always reject memdb, as it shouldn't be used as a real-life database.
+	if cfg.DBBackend == "memdb" ||
+		!slices.Contains(db.BackendList(), db.BackendType(cfg.DBBackend)) {
 		return errInvalidDBBackend
 	}
 

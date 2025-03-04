@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestRunApp(t *testing.T) {
 	tc := []testMainCase{
@@ -66,6 +69,35 @@ func TestRunApp(t *testing.T) {
 		{
 			args:                 []string{"run", "../../tests/integ/undefined_variable_test/undefined_variables_test.gno"},
 			recoverShouldContain: "--- preprocess stack ---", // should contain preprocess debug stack trace
+		},
+		{
+			args:                []string{"run", "-debug", "../../tests/integ/debugger/sample.gno"},
+			stdoutShouldContain: "Welcome to the Gnovm debugger",
+		},
+		{
+			args:             []string{"run", "-debug-addr", "invalidhost:17538", "../../tests/integ/debugger/sample.gno"},
+			errShouldContain: "listen tcp",
+		},
+		{
+			args:                 []string{"run", "../../tests/integ/invalid_assign/main.gno"},
+			recoverShouldContain: "cannot use bool as main.C without explicit conversion",
+		},
+		{
+			args:                []string{"run", "-expr", "Context()", "../../tests/integ/context/context.gno"},
+			stdoutShouldContain: "Context worked",
+		},
+		{
+			args: []string{"run", "../../tests/integ/several-files-multiple-errors/"},
+			stderrShouldContain: func() string {
+				lines := []string{
+					"../../tests/integ/several-files-multiple-errors/file2.gno:3:5: expected 'IDENT', found '{' (code=2)",
+					"../../tests/integ/several-files-multiple-errors/file2.gno:5:1: expected type, found '}' (code=2)",
+					"../../tests/integ/several-files-multiple-errors/main.gno:5:5: expected ';', found example (code=2)",
+					"../../tests/integ/several-files-multiple-errors/main.gno:6:2: expected '}', found 'EOF' (code=2)",
+				}
+				return strings.Join(lines, "\n") + "\n"
+			}(),
+			errShouldBe: "exit code: 1",
 		},
 		// TODO: a test file
 		// TODO: args

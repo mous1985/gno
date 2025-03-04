@@ -3,14 +3,16 @@ package vm
 import (
 	"encoding/base64"
 	"fmt"
+	"math"
 	"strconv"
+	"strings"
 
 	"github.com/cockroachdb/apd/v3"
 	gno "github.com/gnolang/gno/gnovm/pkg/gnolang"
 )
 
-func assertCharNotPlus(b byte) {
-	if b == '+' {
+func assertNoPlusPrefix(s string) {
+	if strings.HasPrefix(s, "+") {
 		panic("numbers cannot start with +")
 	}
 }
@@ -41,17 +43,17 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetString(gno.StringValue(arg))
 			return
 		case gno.IntType:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			i64, err := strconv.ParseInt(arg, 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf(
 					"error parsing int %q: %v",
 					arg, err))
 			}
-			tv.SetInt(int(i64))
+			tv.SetInt(i64)
 			return
 		case gno.Int8Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			i8, err := strconv.ParseInt(arg, 10, 8)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -61,7 +63,7 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetInt8(int8(i8))
 			return
 		case gno.Int16Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			i16, err := strconv.ParseInt(arg, 10, 16)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -71,7 +73,7 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetInt16(int16(i16))
 			return
 		case gno.Int32Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			i32, err := strconv.ParseInt(arg, 10, 32)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -81,7 +83,7 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetInt32(int32(i32))
 			return
 		case gno.Int64Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			i64, err := strconv.ParseInt(arg, 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -91,17 +93,17 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetInt64(i64)
 			return
 		case gno.UintType:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			u64, err := strconv.ParseUint(arg, 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf(
 					"error parsing uint %q: %v",
 					arg, err))
 			}
-			tv.SetUint(uint(u64))
+			tv.SetUint(u64)
 			return
 		case gno.Uint8Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			u8, err := strconv.ParseUint(arg, 10, 8)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -111,7 +113,7 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetUint8(uint8(u8))
 			return
 		case gno.Uint16Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			u16, err := strconv.ParseUint(arg, 10, 16)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -121,7 +123,7 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetUint16(uint16(u16))
 			return
 		case gno.Uint32Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			u32, err := strconv.ParseUint(arg, 10, 32)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -131,7 +133,7 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			tv.SetUint32(uint32(u32))
 			return
 		case gno.Uint64Type:
-			assertCharNotPlus(arg[0])
+			assertNoPlusPrefix(arg)
 			u64, err := strconv.ParseUint(arg, 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf(
@@ -142,11 +144,11 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 			return
 		case gno.Float32Type:
 			value := convertFloat(arg, 32)
-			tv.SetFloat32(float32(value))
+			tv.SetFloat32(math.Float32bits(float32(value)))
 			return
 		case gno.Float64Type:
 			value := convertFloat(arg, 64)
-			tv.SetFloat64(value)
+			tv.SetFloat64(math.Float64bits(value))
 			return
 		default:
 			panic(fmt.Sprintf("unexpected primitive type %s", bt.String()))
@@ -192,15 +194,15 @@ func convertArgToGno(arg string, argT gno.Type) (tv gno.TypedValue) {
 }
 
 func convertFloat(value string, precision int) float64 {
-	assertCharNotPlus(value[0])
+	assertNoPlusPrefix(value)
 	dec, _, err := apd.NewFromString(value)
 	if err != nil {
-		panic(fmt.Sprintf("error parsing float%d %s: %v", precision, value, err))
+		panic(fmt.Sprintf("error parsing float%d %q: %v", precision, value, err))
 	}
 
 	f64, err := strconv.ParseFloat(dec.String(), precision)
 	if err != nil {
-		panic(fmt.Sprintf("error value exceeds float%d precision %s: %v", precision, value, err))
+		panic(fmt.Sprintf("error value exceeds float%d precision %q: %v", precision, value, err))
 	}
 
 	return f64

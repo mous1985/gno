@@ -6,6 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	// allows the default config to have a valid DB
+	_ "github.com/gnolang/gno/tm2/pkg/db/goleveldb"
 )
 
 func TestConfig_LoadOrMakeConfigWithOptions(t *testing.T) {
@@ -180,5 +183,30 @@ func TestConfig_ValidateBaseConfig(t *testing.T) {
 		c.ProfListenAddress = "beep.boop"
 
 		assert.ErrorIs(t, c.BaseConfig.ValidateBasic(), errInvalidProfListenAddress)
+	})
+}
+
+func TestConfig_DBDir(t *testing.T) {
+	t.Parallel()
+
+	t.Run("DB path is absolute", func(t *testing.T) {
+		t.Parallel()
+
+		c := DefaultConfig()
+		c.RootDir = "/root"
+		c.DBPath = "/abs/path"
+
+		assert.Equal(t, c.DBPath, c.DBDir())
+		assert.NotEqual(t, filepath.Join(c.RootDir, c.DBPath), c.DBDir())
+	})
+
+	t.Run("DB path is relative", func(t *testing.T) {
+		t.Parallel()
+
+		c := DefaultConfig()
+		c.RootDir = "/root"
+		c.DBPath = "relative/path"
+
+		assert.Equal(t, filepath.Join(c.RootDir, c.DBPath), c.DBDir())
 	})
 }

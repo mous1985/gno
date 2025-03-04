@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gnolang/gno/tm2/pkg/telemetry"
+	"github.com/gnolang/gno/tm2/pkg/telemetry/metrics"
 	"github.com/gorilla/websocket"
 
 	"github.com/gnolang/gno/tm2/pkg/amino"
@@ -28,6 +30,29 @@ import (
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
 // "result" is the interface on which the result objects are registered, and is populated with every RPCResponse
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger *slog.Logger) {
+	// Check if metrics are enabled
+	if telemetry.MetricsEnabled() {
+		// HTTP endpoints
+		for funcName, rpcFunc := range funcMap {
+			mux.HandleFunc(
+				"/"+funcName,
+				telemetryMiddleware(
+					makeHTTPHandler(rpcFunc, logger),
+				),
+			)
+		}
+
+		// JSONRPC endpoints
+		mux.HandleFunc(
+			"/",
+			telemetryMiddleware(
+				handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)),
+			),
+		)
+
+		return
+	}
+
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
 		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, logger))
@@ -115,61 +140,84 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger *slog.Logger) http.H
 			return
 		}
 
-		// first try to unmarshal the incoming request as an array of RPC requests
-		var (
-			requests  types.RPCRequests
-			responses types.RPCResponses
-		)
-		if err := json.Unmarshal(b, &requests); err != nil {
-			// next, try to unmarshal as a single request
-			var request types.RPCRequest
-			if err := json.Unmarshal(b, &request); err != nil {
-				WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "error unmarshalling request")))
+		// --- Branch 1: Attempt to Unmarshal as a Batch (Slice) of Requests ---
+		var requests types.RPCRequests
+		if err := json.Unmarshal(b, &requests); err == nil {
+			var responses types.RPCResponses
+			for _, req := range requests {
+				if resp := processRequest(r, req, funcMap, logger); resp != nil {
+					responses = append(responses, *resp)
+				}
+			}
+
+			if len(responses) > 0 {
+				WriteRPCResponseArrayHTTP(w, responses)
 				return
 			}
-			requests = []types.RPCRequest{request}
 		}
 
-		for _, request := range requests {
-			request := request
-			// A Notification is a Request object without an "id" member.
-			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-			if request.ID == types.JSONRPCStringID("") {
-				logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
-				continue
+		// --- Branch 2: Attempt to Unmarshal as a Single Request ---
+		var request types.RPCRequest
+		if err := json.Unmarshal(b, &request); err == nil {
+			if resp := processRequest(r, request, funcMap, logger); resp != nil {
+				WriteRPCResponseHTTP(w, *resp)
+				return
 			}
-			if len(r.URL.Path) > 1 {
-				responses = append(responses, types.RPCInvalidRequestError(request.ID, errors.New("path %s is invalid", r.URL.Path)))
-				continue
-			}
-			rpcFunc, ok := funcMap[request.Method]
-			if !ok || rpcFunc.ws {
-				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
-				continue
-			}
-			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
-				if err != nil {
-					responses = append(responses, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
-					continue
-				}
-				args = append(args, fnArgs...)
-			}
-			returns := rpcFunc.f.Call(args)
-			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
-			result, err := unreflectResult(returns)
-			if err != nil {
-				responses = append(responses, types.RPCInternalError(request.ID, err))
-				continue
-			}
-			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
-		}
-		if len(responses) > 0 {
-			WriteRPCResponseArrayHTTP(w, responses)
+		} else {
+			WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "error unmarshalling request")))
+			return
 		}
 	}
+}
+
+// processRequest checks and processes a single JSON-RPC request.
+// If the request should produce a response, it returns a pointer to that response.
+// Otherwise (e.g. if the request is a notification or fails validation), it returns nil.
+func processRequest(r *http.Request, req types.RPCRequest, funcMap map[string]*RPCFunc, logger *slog.Logger) *types.RPCResponse {
+	// Skip notifications (an empty ID indicates no response should be sent)
+	if req.ID == types.JSONRPCStringID("") {
+		logger.Debug("Skipping notification (empty ID)")
+		return nil
+	}
+
+	// Check that the URL path is valid (assume only "/" is acceptable)
+	if len(r.URL.Path) > 1 {
+		resp := types.RPCInvalidRequestError(req.ID, fmt.Errorf("invalid path: %s", r.URL.Path))
+		return &resp
+	}
+
+	// Look up the requested method in the function map.
+	rpcFunc, ok := funcMap[req.Method]
+	if !ok || rpcFunc.ws {
+		resp := types.RPCMethodNotFoundError(req.ID)
+		return &resp
+	}
+
+	ctx := &types.Context{JSONReq: &req, HTTPReq: r}
+	args := []reflect.Value{reflect.ValueOf(ctx)}
+	if len(req.Params) > 0 {
+		fnArgs, err := jsonParamsToArgs(rpcFunc, req.Params)
+		if err != nil {
+			resp := types.RPCInvalidParamsError(req.ID, errors.Wrap(err, "error converting json params to arguments"))
+			return &resp
+		}
+		args = append(args, fnArgs...)
+	}
+
+	// Call the RPC function using reflection.
+	returns := rpcFunc.f.Call(args)
+	logger.Info("HTTPJSONRPC", "method", req.Method, "args", args, "returns", returns)
+
+	// Convert the reflection return values into a result value for JSON serialization.
+	result, err := unreflectResult(returns)
+	if err != nil {
+		resp := types.RPCInternalError(req.ID, err)
+		return &resp
+	}
+
+	// Build and return a successful response.
+	resp := types.NewRPCSuccessResponse(req.ID, result)
+	return &resp
 }
 
 func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
@@ -182,6 +230,21 @@ func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		next(w, r)
+	}
+}
+
+// telemetryMiddleware is the telemetry middleware handler
+func telemetryMiddleware(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		next.ServeHTTP(w, r)
+
+		// Log the response time
+		metrics.HTTPRequestTime.Record(
+			context.Background(),
+			time.Since(start).Milliseconds(),
+		)
 	}
 }
 
@@ -258,7 +321,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
 // rpc.http
 
 // convert from a function name to the http handler
-func makeHTTPHandler(rpcFunc *RPCFunc, logger *slog.Logger) func(http.ResponseWriter, *http.Request) {
+func makeHTTPHandler(rpcFunc *RPCFunc, logger *slog.Logger) http.HandlerFunc {
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -626,6 +689,8 @@ func (wsc *wsConnection) readRoutine() {
 		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
 	})
 
+	telemetryEnabled := telemetry.MetricsEnabled()
+
 	for {
 		select {
 		case <-wsc.Quit():
@@ -646,6 +711,9 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Stop()
 				return
 			}
+
+			// Log the request response start time
+			responseStart := time.Now()
 
 			// first try to unmarshal the incoming request as an array of RPC requests
 			var (
@@ -720,6 +788,14 @@ func (wsc *wsConnection) readRoutine() {
 
 				if len(responses) > 0 {
 					wsc.WriteRPCResponses(responses)
+
+					// Log telemetry
+					if telemetryEnabled {
+						metrics.WSRequestTime.Record(
+							context.Background(),
+							time.Since(responseStart).Milliseconds(),
+						)
+					}
 				}
 			}
 		}
@@ -886,7 +962,7 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 
 	for _, name := range noArgNames {
 		link := fmt.Sprintf("//%s/%s", r.Host, name)
-		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
+		fmt.Fprintf(buf, "<a href=\"%s\">%s</a></br>", link, link)
 	}
 
 	buf.WriteString("<br>Endpoints that require arguments:<br>")
@@ -899,7 +975,7 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 				link += "&"
 			}
 		}
-		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
+		fmt.Fprintf(buf, "<a href=\"%s\">%s</a></br>", link, link)
 	}
 	buf.WriteString("</body></html>")
 	w.Header().Set("Content-Type", "text/html")

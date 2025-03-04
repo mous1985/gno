@@ -25,7 +25,7 @@ func AdminSetTransferLimit(amount int64) string {
 	if err := assertIsAdmin(); err != nil {
 		return err.Error()
 	}
-	gLimit = std.Coin{Denom: "ugnot", Amount: amount}
+	gLimit = std.NewCoin("ugnot", amount)
 	return ""
 }
 
@@ -79,7 +79,7 @@ func AdminRemoveController(addr std.Address) string {
 }
 
 func assertIsAdmin() error {
-	caller := std.GetOrigCaller()
+	caller := std.OriginCaller()
 	if caller != gAdminAddr {
 		return errors.New("restricted for admin")
 	}

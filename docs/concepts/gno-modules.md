@@ -4,7 +4,7 @@ id: gno-modules
 
 # Gno Modules
 
-The packages and realms containing `gno.mod` file can be referred as Gno modules. `gno.mod` file is introduced to enhance local testing and handle dependency management while testing Gno packages/realms locally. At the time of writing, `gno.mod` is only used by the `gno` tool for local development, and it is disregarded on the Gno.land chain.
+The packages and realms containing `gno.mod` file can be referred as Gno modules. `gno.mod` file is introduced to enhance local testing and handle dependency management while testing Gno packages/realms locally. At the time of writing, `gno.mod` is only used by the `gno` tool for local development, and it is disregarded on the gno.land chain.
 
 ## What is the gno.mod file for?
 
@@ -24,7 +24,6 @@ The gno command-line tool provides several commands to work with the gno.mod fil
 
 - **gno mod init**: small helper to initialize a new `gno.mod` file.
 - **gno mod download**: downloads the dependencies specified in the gno.mod file. This command fetches the required dependencies from chain and ensures they are available for local testing and development.
-- **gno mod tidy**: removes any unused dependency and adds any required but not yet listed in the file -- most of the maintenance you'll usually need to do!
 - **gno mod why**: explains why the specified package or module is being kept by `gno mod tidy`.
 
 ## Sample `gno.mod` file
@@ -32,12 +31,7 @@ The gno command-line tool provides several commands to work with the gno.mod fil
 ```
 module gno.land/p/demo/sample
 
-require (
-    gno.land/p/demo/avl v0.0.0-latest
-    gno.land/p/demo/testutils v0.0.0-latest
-)
-
 ```
 
 - **`module gno.land/p/demo/sample`**: specifies the package/realm import path.
-- **`require` Block**: lists the required dependencies. Here using the latest available versions of "gno.land/p/demo/avl" and "gno.land/p/demo/testutils". These dependencies should be specified with the version "v0.0.0-latest" since on-chain packages currently do not support versioning.
+
